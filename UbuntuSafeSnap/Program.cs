@@ -4,7 +4,11 @@ using UbuntuSafeSnap;
 string stagingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "staging");
 
 var packageService = new PackageService();
-
 await packageService.ExtractPackageListAsync(stagingDirectory);
 
-Console.WriteLine($"Done! Check: {Path.Combine(stagingDirectory, "packages.txt")}");
+var configService = new ConfigService();
+await configService.CollectConfigFilesAsync(
+    new[] { Path.Combine(Directory.GetCurrentDirectory(), "tests", "mock_system") },
+    stagingDirectory);
+
+Console.WriteLine($"Done! Check: {stagingDirectory}");
