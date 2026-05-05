@@ -44,6 +44,70 @@ public class ConfigService
 
     private Task CollectFromDirectoryAsync(string sourceDir, string stagingDirectory)
     {
+        var directories = new Queue<string>();
+        directories.Enqueue(sourceDir);
+
+        while (directories.Count > 0)
+        {
+            var currentDir = directories.Dequeue();
+            string[] files;
+            string[] subDirs;
+
+            try
+            {
+                files = Directory.GetFiles(currentDir);
+                subDirs = Directory.GetDirectories(currentDir);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Console.WriteLine(
+                    $"[ConfigService] Unauthorized access to {currentDir}. Skipping..."
+                );
+                continue;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                Console.WriteLine(
+                    $"[ConfigService] Directory not found: {currentDir}. Skipping..."
+                );
+                continue;
+            }
+
+            foreach (var file in files)
+            {
+                if (ShouldExclude(file))
+                {
+                    Console.WriteLine(
+                        $"[ConfigService] Skipped excluded file: {Path.GetFileName(file)}"
+                    );
+                    continue;
+                }
+
+                try
+                {
+                    string relativePath = Path.GetRelativePath(sourceDir, file);
+                    string destPath = Path.Combine(stagingDirectory, relativePath);
+                    string? destDir = Path.GetDirectoryName(destPath);
+                    if (destDir is not null)
+                    {
+                        Directory.CreateDirectory(destDir);
+                    }
+
+                    File.Copy(file, destPath, overwrite: true);
+                    Console.WriteLine($"[ConfigService] Copied: {relativePath}");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Console.WriteLine($"[ConfigService] Unauthorized access to file: {file}");
+                }
+            }
+
+            foreach (var subDir in subDirs)
+            {
+                directories.Enqueue(subDir);
+            }
+        }
+
         return Task.CompletedTask;
     }
 
