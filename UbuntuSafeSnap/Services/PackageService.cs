@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace UbuntuSafeSnap;
+namespace UbuntuSafeSnap.Services;
 
 public class PackageService
 {
