@@ -1,11 +1,18 @@
-﻿namespace UbuntuSafeSnap.Services;
+﻿using UbuntuSafeSnap.Interfaces;
 
-public static class ExclusionService
+namespace UbuntuSafeSnap.Services;
+
+public class ExclusionService : IExclusionService
 {
-    private static readonly HashSet<string> ForbiddenExtensions = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HashSet<string> ForbiddenFilenames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _forbiddenExtensions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _forbiddenFilenames = new(StringComparer.OrdinalIgnoreCase);
 
-    public static string GetDefaultContent()
+    public ExclusionService(string exclusionsFilePath)
+    {
+        Load(exclusionsFilePath);
+    }
+
+    public string GetDefaultContent()
     {
         return @"# Exclusion rules for UbuntuSafeSnap
 # Files matching these patterns will be excluded from backups.
@@ -28,7 +35,7 @@ secrets.json
 secrets.lua";
     }
 
-    public static void Load(string filePath)
+    public void Load(string filePath)
     {
         if (!File.Exists(filePath))
         {
@@ -37,8 +44,8 @@ secrets.lua";
                 filePath);
         }
 
-        ForbiddenExtensions.Clear();
-        ForbiddenFilenames.Clear();
+        _forbiddenExtensions.Clear();
+        _forbiddenFilenames.Clear();
 
         foreach (var rawLine in File.ReadAllLines(filePath))
         {
@@ -49,18 +56,18 @@ secrets.lua";
 
             if (line.StartsWith('.'))
             {
-                ForbiddenExtensions.Add(line);
+                _forbiddenExtensions.Add(line);
             }
             else
             {
-                ForbiddenFilenames.Add(line);
+                _forbiddenFilenames.Add(line);
             }
         }
     }
 
-    public static bool ShouldExclude(string filePath)
+    public bool ShouldExclude(string filePath)
     {
-        return ForbiddenExtensions.Contains(Path.GetExtension(filePath))
-            || ForbiddenFilenames.Contains(Path.GetFileName(filePath));
+        return _forbiddenExtensions.Contains(Path.GetExtension(filePath))
+            || _forbiddenFilenames.Contains(Path.GetFileName(filePath));
     }
 }

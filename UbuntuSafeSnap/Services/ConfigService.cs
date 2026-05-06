@@ -1,7 +1,16 @@
-﻿namespace UbuntuSafeSnap.Services;
+﻿using UbuntuSafeSnap.Interfaces;
 
-public class ConfigService
+namespace UbuntuSafeSnap.Services;
+
+public class ConfigService : IConfigService
 {
+    private readonly IExclusionService _exclusionService;
+
+    public ConfigService(IExclusionService exclusionService)
+    {
+        _exclusionService = exclusionService;
+    }
+
     public async Task CollectConfigFilesAsync(
         IEnumerable<string> sourceDirectories,
         string stagingDirectory
@@ -75,7 +84,7 @@ public class ConfigService
 
             foreach (var file in files)
             {
-                if (ShouldExclude(file))
+                if (_exclusionService.ShouldExclude(file))
                 {
                     Console.WriteLine(
                         $"[ConfigService] Skipped excluded file: {Path.GetFileName(file)}"
@@ -109,10 +118,5 @@ public class ConfigService
         }
 
         return Task.CompletedTask;
-    }
-
-    private bool ShouldExclude(string filePath)
-    {
-        return ExclusionService.ShouldExclude(filePath);
     }
 }
