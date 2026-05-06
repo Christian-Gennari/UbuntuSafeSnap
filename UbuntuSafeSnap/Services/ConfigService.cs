@@ -113,7 +113,6 @@ public class ConfigService
 
     private bool ShouldExclude(string filePath)
     {
-        // Placeholder for Issue #4: Secret and Env Exclusion
-        return false;
+        return ExclusionService.ShouldExclude(filePath);
     }
 }
