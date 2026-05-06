@@ -2,7 +2,7 @@
 
 # UbuntuSafeSnap
 
-A .NET 10 console application for creating safe, encrypted backups of Ubuntu system configurations while excluding sensitive files.
+A .NET 10 console application for creating safe backups of Ubuntu system configurations while excluding sensitive files.
 
 ## Git Workflow Rules (CRITICAL)
 
