@@ -24,4 +24,9 @@ await packageService.ExtractPackageListAsync(stagingDirectory);
 var configService = new ConfigService();
 await configService.CollectConfigFilesAsync(targetDirectories, stagingDirectory);
 
-Console.WriteLine($"Done! Check: {stagingDirectory}");
+string archivePath = Path.Combine(
+    Directory.GetCurrentDirectory(),
+    $"ubuntusafesnap-{DateTime.Now:yyyyMMdd-HHmm}.zip"
+);
+
+ArchiveService.CreateArchive(stagingDirectory, archivePath);
