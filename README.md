@@ -4,40 +4,61 @@
 
 A .NET 10 console application for creating safe backups of Ubuntu system configurations while excluding sensitive files.
 
-## Git Workflow Rules (CRITICAL)
+## What it does
 
-NEVER push directly to `main`. All changes must come through PRs.
+UbuntuSafeSnap automates the collection of system configuration files and installed package lists into a single, portable backup archive.
 
-1. Create GitHub Issue with type label (feature, bug, etc.)
-2. Create branch from issue using GitHub's "Create a branch" feature
-3. Develop and commit following Conventional Commits
-4. Open Pull Request with descriptive title and body
-5. Merge via PR only
+- **Package Extraction**: Captures the list of manually installed packages via `apt-mark showmanual`.
+- **Config Collection**: Recursively collects configuration files from user-defined directories.
+- **Smart Exclusion**: Automatically skips sensitive files like `.env`, `.key`, `.pem`, and `secrets.*` based on configurable rules.
+- **Archive Generation**: Bundles everything into a timestamped `.zip` archive for easy storage or migration.
 
-Note: Enabled branch protection for main branch
+## Requirements
 
-## Conventional Commits Reference
+- **SDK**: .NET 10.0
+- **Platform**: Ubuntu/Debian (required for `apt-mark` package list extraction)
 
-Format: `<type>[optional scope]: <description>`
+## Quick Start
 
-| Type     | Purpose                                           | Example                                    |
-|----------|---------------------------------------------------|--------------------------------------------|
-| feat     | Introduces a new feature                           | feat: add package extraction service       |
-| fix      | Patches a bug in your codebase                     | fix: resolve permission denied error        |
-| docs     | Documentation only changes                         | docs: update installation guide            |
-| style    | Code style (formatting, semicolons, etc.)        | style: format indentation in Program.cs    |
-| refactor | Code change that neither fixes bug nor adds feat | refactor: simplify exclusion logic         |
-| perf     | Performance improvement                           | perf: optimize file traversal speed        |
-| test     | Adding or correcting tests                        | test: add unit tests for ArchiveService    |
-| build    | Build system or external dependencies              | build: update .NET SDK version             |
-| ci       | CI configuration files and scripts                 | ci: add GitHub Actions workflow            |
-| chore    | Other changes not modifying src or test files     | chore: update .gitignore                   |
+1. **Clone and Build**:
+   ```bash
+   git clone https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari.git
+   cd net25-kurs-5-valfri-Christian-Gennari
+   dotnet build
+   ```
 
-## Assignment Requirements Checklist
+2. **Configure Targets**:
+   Edit `targets.txt` to include the directories you want to back up (one per line).
 
-- [ ] Minimum 5 issues created, used, and closed via PRs
-- [ ] Minimum 15 meaningful commits
-- [ ] Each issue has: title, description, type label
-- [ ] Each PR has: descriptive title and body
-- [ ] All changes via branches and PRs (zero direct pushes to main)
-- [ ] Main branch named `main`
+3. **Run**:
+   ```bash
+   dotnet run --project UbuntuSafeSnap
+   ```
+
+## Configuration
+
+### Targets (`targets.txt`)
+List directories to include in the backup. Supports `~` expansion for home directories and `#` for comments.
+
+### Exclusions (`exclusions.txt`)
+Configure which files or extensions to skip. 
+- Prefix with `.` for extension matching (e.g., `.log`).
+- Use full filenames for specific file exclusion (e.g., `config.old`).
+
+## Architecture
+
+The application follows a service-oriented architecture:
+
+- **TargetResolverService**: Resolves and expands paths from `targets.txt`.
+- **PackageService**: Handles `apt-mark` process execution and output capture.
+- **ConfigService**: Manages recursive file discovery and staging.
+- **ExclusionService**: Evaluates files against rules in `exclusions.txt`.
+- **ArchiveService**: Handles `.zip` creation and workspace cleanup.
+
+## Development
+
+For information on contribution guidelines, git workflow, and commit conventions, see [WORKFLOW.md](WORKFLOW.md).
+
+## License
+
+This project is licensed under the MIT License.
