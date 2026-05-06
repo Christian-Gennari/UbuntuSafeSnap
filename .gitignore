@@ -10,6 +10,8 @@
 
 # dotenv files
 .env
+# Allow test fixture secrets (mock data, not real)
+!tests/mock_system/.env
 
 # User-specific files
 *.rsuser
