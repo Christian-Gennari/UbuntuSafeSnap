@@ -1,8 +1,10 @@
+using UbuntuSafeSnap.Interfaces;
+
 namespace UbuntuSafeSnap.Services;
 
-public static class TargetResolverService
+public class TargetResolverService : ITargetResolverService
 {
-    public static IEnumerable<string> Resolve(string filePath)
+    public IEnumerable<string> Resolve(string filePath)
     {
         if (!File.Exists(filePath))
         {

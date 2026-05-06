@@ -1,10 +1,11 @@
 using System.IO.Compression;
+using UbuntuSafeSnap.Interfaces;
 
 namespace UbuntuSafeSnap.Services;
 
-public static class ArchiveService
+public class ArchiveService : IArchiveService
 {
-    public static void CreateArchive(string stagingDirectory, string outputPath)
+    public void CreateArchive(string stagingDirectory, string outputPath)
     {
         ArgumentNullException.ThrowIfNull(stagingDirectory);
         ArgumentNullException.ThrowIfNull(outputPath);

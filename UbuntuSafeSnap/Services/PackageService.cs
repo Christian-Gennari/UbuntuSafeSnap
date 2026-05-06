@@ -2,7 +2,7 @@
 
 namespace UbuntuSafeSnap.Services;
 
-public class PackageService
+public class PackageService : Interfaces.IPackageService
 {
     public async Task ExtractPackageListAsync(string stagingDirectory)
     {
