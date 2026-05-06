@@ -1,4 +1,4 @@
-﻿namespace UbuntuSafeSnap;
+﻿namespace UbuntuSafeSnap.Services;
 
 public class ConfigService
 {
