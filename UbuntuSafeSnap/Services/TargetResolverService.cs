@@ -24,7 +24,15 @@ public class TargetResolverService : ITargetResolverService
                 ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + line[1..]
                 : line;
 
-            yield return Path.GetFullPath(expanded);
+            string fullPath = Path.GetFullPath(expanded);
+
+            if (fullPath == Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
+            {
+                Console.WriteLine($"[TargetResolverService] Skipping home directory: {fullPath}");
+                continue;
+            }
+
+            yield return fullPath;
         }
     }
 }
