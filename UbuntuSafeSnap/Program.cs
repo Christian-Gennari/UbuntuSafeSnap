@@ -130,7 +130,7 @@ static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile)
 
     string archivePath = Path.Combine(
         Directory.GetCurrentDirectory(),
-        $"ubuntusafesnap-{DateTime.Now:yyyyMMdd-HHmm}.zip"
+        $"ubuntusafesnap-{DateTime.Now:yyyyMMdd-HHmmss}.zip"
     );
 
     var archiveService = services.GetRequiredService<IArchiveService>();
