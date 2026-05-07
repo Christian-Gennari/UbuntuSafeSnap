@@ -17,7 +17,7 @@ if (!File.Exists(targetsFile))
 
 if (!File.Exists(exclusionsFile))
 {
-    File.WriteAllText(exclusionsFile, new ExclusionService(exclusionsFile).GetDefaultContent());
+    File.WriteAllText(exclusionsFile, ExclusionService.GetDefaultContent());
     Console.WriteLine($"[{exclusionsFile}] did not exist. A starter file has been created.");
     Console.WriteLine("Please review / edit it, then rerun the program.");
     Console.Write("Press Enter to exit...");

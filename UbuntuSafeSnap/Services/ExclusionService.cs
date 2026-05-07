@@ -12,7 +12,7 @@ public class ExclusionService : IExclusionService
         Load(exclusionsFilePath);
     }
 
-    public string GetDefaultContent()
+    public static string GetDefaultContent()
     {
         return @"# Exclusion rules for UbuntuSafeSnap
 # Files matching these patterns will be excluded from backups.

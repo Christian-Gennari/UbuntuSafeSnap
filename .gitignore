@@ -3,6 +3,10 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Runtime-generated config files
+targets.txt
+exclusions.txt
+
 # Staging files
 /staging
 
