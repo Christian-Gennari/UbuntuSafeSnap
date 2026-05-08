@@ -31,6 +31,8 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
 
         Console.WriteLine($"[ConfigService] Starting config collection to: {stagingDirectory}");
 
+        var manifestEntries = new List<string>();
+
         foreach (var sourceDir in sourceDirectories)
         {
             if (!Directory.Exists(sourceDir))
@@ -42,11 +44,15 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
             }
 
             Console.WriteLine($"[ConfigService] Processing source: {sourceDir}");
-            await CollectFromDirectoryAsync(sourceDir, stagingDirectory);
+            CollectFromDirectory(sourceDir, stagingDirectory, manifestEntries);
         }
+
+        string manifestPath = Path.Combine(stagingDirectory, "manifest.txt");
+        await File.WriteAllLinesAsync(manifestPath, manifestEntries);
+        Console.WriteLine($"[ConfigService] Manifest written: {manifestPath} ({manifestEntries.Count} entries)");
     }
 
-    private Task CollectFromDirectoryAsync(string sourceDir, string stagingDirectory)
+    private void CollectFromDirectory(string sourceDir, string stagingDirectory, List<string> manifestEntries)
     {
         var directories = new Queue<string>();
         directories.Enqueue(sourceDir);
@@ -99,6 +105,9 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
 
                     File.Copy(file, destPath, overwrite: true);
                     Console.WriteLine($"[ConfigService] Copied: {relativePath}");
+
+                    string absoluteSourceDir = Path.GetFullPath(sourceDir);
+                    manifestEntries.Add($"{absoluteSourceDir}|{relativePath}");
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -111,7 +120,5 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
                 directories.Enqueue(subDir);
             }
         }
-
-        return Task.CompletedTask;
     }
 }
