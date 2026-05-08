@@ -24,7 +24,6 @@ backupCommand.Options.Add(configPathOption);
 backupCommand.Options.Add(nonInteractiveOption);
 
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
-restoreCommand.Options.Add(nonInteractiveOption);
 restoreCommand.Arguments.Add(restoreFileArgument);
 
 var rootCommand = new RootCommand("UbuntuSafeSnap — Ubuntu backup & restore utility");
@@ -49,6 +48,7 @@ restoreCommand.SetAction(async (ParseResult parseResult) =>
     var restoreFilePath = parseResult.GetValue(restoreFileArgument);
 
     var restoreServices = new ServiceCollection()
+        .AddSingleton<IConflictResolverService, ConflictResolverService>()
         .AddSingleton<IRestoreService, RestoreService>()
         .BuildServiceProvider();
 

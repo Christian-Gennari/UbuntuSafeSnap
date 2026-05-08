@@ -4,8 +4,10 @@ using UbuntuSafeSnap.Interfaces;
 
 namespace UbuntuSafeSnap.Services;
 
-public class RestoreService : IRestoreService
+public class RestoreService(IConflictResolverService conflictResolver) : IRestoreService
 {
+    private readonly IConflictResolverService _conflictResolver = conflictResolver;
+
     public async Task<int> RestoreAsync(string archivePath)
     {
         ArgumentNullException.ThrowIfNull(archivePath);
@@ -55,14 +57,15 @@ public class RestoreService : IRestoreService
                 return packageResult;
             }
 
-            var (restored, skipped) = RestoreConfigFiles(stagingDirectory);
+            var (restored, skipped, aborted) = await RestoreConfigFilesAsync(stagingDirectory);
 
-            Console.WriteLine($"[RestoreService] Restore complete. {restored} file(s) restored. {skipped} file(s) skipped (already exist).");
-
-            if (skipped > 0)
+            if (aborted)
             {
-                Console.WriteLine("[RestoreService] Skipped files need conflict resolution (see #26).");
+                Console.Error.WriteLine($"[RestoreService] Restore aborted. {restored} file(s) restored, {skipped} file(s) skipped before abort.");
+                return 1;
             }
+
+            Console.WriteLine($"[RestoreService] Restore complete. {restored} file(s) restored. {skipped} file(s) skipped.");
 
             return 0;
         }
@@ -118,7 +121,7 @@ public class RestoreService : IRestoreService
 
         process.Start();
 
-        string stdout = await process.StandardOutput.ReadToEndAsync();
+        _ = await process.StandardOutput.ReadToEndAsync();
         string stderr = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
 
@@ -132,7 +135,7 @@ public class RestoreService : IRestoreService
         return 0;
     }
 
-    private static (int restored, int skipped) RestoreConfigFiles(string stagingDirectory)
+    private async Task<(int restored, int skipped, bool aborted)> RestoreConfigFilesAsync(string stagingDirectory)
     {
         int restored = 0;
         int skipped = 0;
@@ -184,8 +187,31 @@ public class RestoreService : IRestoreService
 
                 if (File.Exists(destPath))
                 {
-                    Console.WriteLine($"[RestoreService] Skipped (already exists): {destPath}");
-                    skipped++;
+                    var resolution = await _conflictResolver.ResolveAsync(file, destPath);
+
+                    switch (resolution)
+                    {
+                        case ConflictResolution.Skip:
+                            Console.WriteLine($"[RestoreService] Skipped (user choice): {destPath}");
+                            skipped++;
+                            break;
+                        case ConflictResolution.Overwrite:
+                            try
+                            {
+                                File.Copy(file, destPath, overwrite: true);
+                                Console.WriteLine($"[RestoreService] Overwritten: {destPath}");
+                                restored++;
+                            }
+                            catch (UnauthorizedAccessException)
+                            {
+                                Console.WriteLine($"[RestoreService] Unauthorized access to destination: {destPath}");
+                                skipped++;
+                            }
+                            break;
+                        case ConflictResolution.Abort:
+                            return (restored, skipped, aborted: true);
+                    }
+
                     continue;
                 }
 
@@ -214,7 +240,7 @@ public class RestoreService : IRestoreService
             }
         }
 
-        return (restored, skipped);
+        return (restored, skipped, aborted: false);
     }
 
     private static Dictionary<string, string> LoadManifest(string stagingDirectory)
