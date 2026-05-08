@@ -2,14 +2,9 @@
 
 namespace UbuntuSafeSnap.Services;
 
-public class ConfigService : IConfigService
+public class ConfigService(IExclusionService exclusionService) : IConfigService
 {
-    private readonly IExclusionService _exclusionService;
-
-    public ConfigService(IExclusionService exclusionService)
-    {
-        _exclusionService = exclusionService;
-    }
+    private readonly IExclusionService _exclusionService = exclusionService;
 
     public async Task CollectConfigFilesAsync(
         IEnumerable<string> sourceDirectories,

@@ -37,9 +37,10 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
     var configPath = parseResult.GetValue(configPathOption)!;
     var nonInteractive = parseResult.GetValue(nonInteractiveOption);
 
-    int bootstrapResult = EnsureConfigFilesExist(configPath, nonInteractive, out string targetsFile, out string exclusionsFile);
-    if (bootstrapResult != 0)
-        return bootstrapResult;
+    int result = TargetResolverService.EnsureExists(configPath, nonInteractive, out string targetsFile);
+    if (result != 0) return result;
+    result = ExclusionService.EnsureExists(configPath, nonInteractive, out string exclusionsFile);
+    if (result != 0) return result;
 
     return await RunBackupAsync(targetsFile, exclusionsFile);
 });
@@ -50,59 +51,15 @@ restoreCommand.SetAction((ParseResult parseResult) =>
     var nonInteractive = parseResult.GetValue(nonInteractiveOption);
     var restoreFilePath = parseResult.GetValue(restoreFileArgument);
 
-    int bootstrapResult = EnsureConfigFilesExist(configPath, nonInteractive, out _, out _);
-    if (bootstrapResult != 0)
-        return bootstrapResult;
+    int result = TargetResolverService.EnsureExists(configPath, nonInteractive, out _);
+    if (result != 0) return result;
+    result = ExclusionService.EnsureExists(configPath, nonInteractive, out _);
+    if (result != 0) return result;
 
     return RunRestore(restoreFilePath!);
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
-
-static int EnsureConfigFilesExist(string configPath, bool nonInteractive, out string targetsFile, out string exclusionsFile)
-{
-    targetsFile = Path.Combine(configPath, "targets.txt");
-    exclusionsFile = Path.Combine(configPath, "exclusions.txt");
-
-    var missingFiles = new List<string>();
-    if (!File.Exists(targetsFile))
-        missingFiles.Add(targetsFile);
-    if (!File.Exists(exclusionsFile))
-        missingFiles.Add(exclusionsFile);
-
-    if (missingFiles.Count > 0 && nonInteractive)
-    {
-        foreach (var f in missingFiles)
-            Console.Error.WriteLine($"Required file not found: {f}");
-        return 1;
-    }
-
-    bool createdAny = false;
-
-    if (!File.Exists(targetsFile))
-    {
-        File.WriteAllText(targetsFile, "# Add directories here, one per line" + Environment.NewLine + "tests/mock_system" + Environment.NewLine);
-        Console.WriteLine($"[{targetsFile}] did not exist. A starter file has been created.");
-        createdAny = true;
-    }
-
-    if (!File.Exists(exclusionsFile))
-    {
-        File.WriteAllText(exclusionsFile, ExclusionService.GetDefaultContent());
-        Console.WriteLine($"[{exclusionsFile}] did not exist. A starter file has been created.");
-        createdAny = true;
-    }
-
-    if (createdAny)
-    {
-        Console.WriteLine("Please review / edit the created file(s), then rerun the program.");
-        Console.Write("Press Enter to exit...");
-        Console.ReadLine();
-        return 1;
-    }
-
-    return 0;
-}
 
 static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile)
 {
