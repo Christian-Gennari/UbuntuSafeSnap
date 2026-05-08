@@ -24,7 +24,6 @@ backupCommand.Options.Add(configPathOption);
 backupCommand.Options.Add(nonInteractiveOption);
 
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
-restoreCommand.Options.Add(configPathOption);
 restoreCommand.Options.Add(nonInteractiveOption);
 restoreCommand.Arguments.Add(restoreFileArgument);
 
@@ -45,18 +44,16 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
     return await RunBackupAsync(targetsFile, exclusionsFile);
 });
 
-restoreCommand.SetAction((ParseResult parseResult) =>
+restoreCommand.SetAction(async (ParseResult parseResult) =>
 {
-    var configPath = parseResult.GetValue(configPathOption)!;
-    var nonInteractive = parseResult.GetValue(nonInteractiveOption);
     var restoreFilePath = parseResult.GetValue(restoreFileArgument);
 
-    int result = TargetResolverService.EnsureExists(configPath, nonInteractive, out _);
-    if (result != 0) return result;
-    result = ExclusionService.EnsureExists(configPath, nonInteractive, out _);
-    if (result != 0) return result;
+    var restoreServices = new ServiceCollection()
+        .AddSingleton<IRestoreService, RestoreService>()
+        .BuildServiceProvider();
 
-    return RunRestore(restoreFilePath!);
+    var restoreService = restoreServices.GetRequiredService<IRestoreService>();
+    return await restoreService.RestoreAsync(restoreFilePath!);
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
@@ -96,14 +93,3 @@ static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile)
     return 0;
 }
 
-static int RunRestore(string restoreFilePath)
-{
-    if (!File.Exists(restoreFilePath))
-    {
-        Console.Error.WriteLine($"Restore file not found: {restoreFilePath}");
-        return 1;
-    }
-
-    Console.WriteLine($"Restore from {restoreFilePath} — not yet implemented (see #25)");
-    return 0;
-}
