@@ -35,6 +35,27 @@ secrets.json
 secrets.lua";
     }
 
+    public static int EnsureExists(string configPath, bool nonInteractive, out string exclusionsFile)
+    {
+        exclusionsFile = Path.Combine(configPath, "exclusions.txt");
+
+        if (File.Exists(exclusionsFile))
+            return 0;
+
+        if (nonInteractive)
+        {
+            Console.Error.WriteLine($"Required file not found: {exclusionsFile}");
+            return 1;
+        }
+
+        File.WriteAllText(exclusionsFile, GetDefaultContent());
+        Console.WriteLine($"[{exclusionsFile}] did not exist. A starter file has been created.");
+        Console.WriteLine("Please review / edit the created file(s), then rerun the program.");
+        Console.Write("Press Enter to exit...");
+        Console.ReadLine();
+        return 1;
+    }
+
     public void Load(string filePath)
     {
         if (!File.Exists(filePath))
