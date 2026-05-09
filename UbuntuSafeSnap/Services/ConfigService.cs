@@ -35,10 +35,51 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
 
         foreach (var sourceDir in sourceDirectories)
         {
+            if (File.Exists(sourceDir))
+            {
+                if (_exclusionService.ShouldExclude(sourceDir))
+                {
+                    Console.WriteLine($"[ConfigService] Excluded file: {sourceDir}");
+                    continue;
+                }
+
+                var attrs = File.GetAttributes(sourceDir);
+                if ((attrs & FileAttributes.ReparsePoint) != 0)
+                {
+                    Console.WriteLine($"[ConfigService] Skipping symlink: {sourceDir}");
+                    continue;
+                }
+
+                string relativePath = Path.GetFileName(sourceDir);
+                string destPath = Path.Combine(stagingDirectory, relativePath);
+                string absoluteParentDir = Path.GetFullPath(Path.GetDirectoryName(sourceDir)!);
+
+                try
+                {
+                    File.Copy(sourceDir, destPath, overwrite: true);
+                    Console.WriteLine($"[ConfigService] Copied file: {sourceDir}");
+                    manifestEntries.Add($"{absoluteParentDir}|{relativePath}");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Console.WriteLine($"[ConfigService] Unauthorized access to file: {sourceDir}");
+                }
+                catch (FileNotFoundException)
+                {
+                    Console.WriteLine($"[ConfigService] File not found (broken symlink or deleted): {sourceDir}");
+                }
+                catch (IOException)
+                {
+                    Console.WriteLine($"[ConfigService] Cannot copy file (socket, pipe, or in use): {sourceDir}");
+                }
+
+                continue;
+            }
+
             if (!Directory.Exists(sourceDir))
             {
                 Console.WriteLine(
-                    $"[ConfigService] Skipping non-existent/not found directory: {sourceDir}"
+                    $"[ConfigService] Skipping non-existent/not found: {sourceDir}"
                 );
                 continue;
             }
