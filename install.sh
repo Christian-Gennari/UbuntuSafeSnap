@@ -21,7 +21,8 @@ mkdir -p "$DEST_DIR"
 cp "$PUBLISH_OUTPUT" "$DEST_DIR/"
 chmod +x "$DEST_DIR/$BINARY_NAME"
 
-DISPLAY_DIR="${DEST_DIR/#$HOME\//~/}"
+HOME_PREFIX="$HOME"
+DISPLAY_DIR="${DEST_DIR/#"$HOME_PREFIX"/"~"}"
 
 echo ""
 echo "Binary copied to: $DISPLAY_DIR/$BINARY_NAME"
