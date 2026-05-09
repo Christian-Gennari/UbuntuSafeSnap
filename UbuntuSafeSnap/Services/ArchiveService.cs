@@ -1,10 +1,16 @@
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using UbuntuSafeSnap.Interfaces;
 
 namespace UbuntuSafeSnap.Services;
 
 public class ArchiveService : IArchiveService
 {
+    private const UnixFileMode DirectoryPermissions =
+        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+        UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+        UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+
     public void CreateArchive(string stagingDirectory, string outputPath)
     {
         ArgumentNullException.ThrowIfNull(stagingDirectory);
@@ -18,10 +24,18 @@ public class ArchiveService : IArchiveService
         }
 
         string? outputDir = Path.GetDirectoryName(outputPath);
-        if (outputDir is not null && !Directory.Exists(outputDir))
+        if (outputDir is not null)
         {
-            Directory.CreateDirectory(outputDir);
-            Console.WriteLine($"[ArchiveService] Created output directory: {outputDir}");
+            if (!Directory.Exists(outputDir))
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    Directory.CreateDirectory(outputDir, DirectoryPermissions);
+                else
+                    Directory.CreateDirectory(outputDir);
+                Console.WriteLine($"[ArchiveService] Created output directory: {outputDir}");
+            }
+
+            EnsureWritableDirectory(outputDir);
         }
 
         Console.WriteLine($"[ArchiveService] Creating archive: {outputPath}");
@@ -70,5 +84,22 @@ public class ArchiveService : IArchiveService
         }
 
         Console.WriteLine($"[ArchiveService] Pruned {pruned} backup(s), kept {keepCount} most recent.");
+    }
+
+    private static void EnsureWritableDirectory(string directoryPath)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return;
+
+        try
+        {
+            File.SetUnixFileMode(directoryPath, DirectoryPermissions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine(
+                $"[ArchiveService] Cannot set permissions on {directoryPath}. " +
+                $"Fix by running: sudo chown $(whoami) {directoryPath}");
+        }
     }
 }
