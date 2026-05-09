@@ -96,6 +96,14 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
                     continue;
                 }
 
+                var attrs = File.GetAttributes(file);
+                if ((attrs & FileAttributes.ReparsePoint) != 0)
+                {
+                    Console.WriteLine($"[ConfigService] Skipping symlink: {file}");
+                    totalExcluded++;
+                    continue;
+                }
+
                 try
                 {
                     string relativePath = Path.GetRelativePath(sourceDir, file);
@@ -117,6 +125,14 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
                 {
                     Console.WriteLine($"[ConfigService] Unauthorized access to file: {file}");
                 }
+                catch (FileNotFoundException)
+                {
+                    Console.WriteLine($"[ConfigService] File not found (broken symlink or deleted): {file}");
+                }
+                catch (IOException)
+                {
+                    Console.WriteLine($"[ConfigService] Cannot copy file (socket, pipe, or in use): {file}");
+                }
             }
 
             if (dirCopied > 0)
@@ -126,6 +142,13 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
 
             foreach (var subDir in subDirs)
             {
+                var attrs = File.GetAttributes(subDir);
+                if ((attrs & FileAttributes.ReparsePoint) != 0)
+                {
+                    Console.WriteLine($"[ConfigService] Skipping symlinked directory: {subDir}");
+                    continue;
+                }
+
                 directories.Enqueue(subDir);
             }
         }
