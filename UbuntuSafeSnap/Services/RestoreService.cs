@@ -185,6 +185,10 @@ public class RestoreService(IConflictResolverService conflictResolver) : IRestor
 
                     switch (resolution)
                     {
+                        case ConflictResolution.Identical:
+                            Console.WriteLine($"[RestoreService] Skipped (identical): {destPath}");
+                            skipped++;
+                            break;
                         case ConflictResolution.Skip:
                             Console.WriteLine($"[RestoreService] Skipped (user choice): {destPath}");
                             skipped++;

@@ -34,6 +34,12 @@ rootCommand.Subcommands.Add(restoreCommand);
 
 backupCommand.SetAction(async (ParseResult parseResult) =>
 {
+    if (Environment.UserName == "root" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUDO_USER")))
+    {
+        Console.WriteLine("Warning: Running backup as root without sudo. Home directory targets will resolve to /root.");
+        Console.WriteLine("Consider running without sudo: UbuntuSafeSnap backup");
+    }
+
     string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
     string exclusionsPath = Path.Combine(Directory.GetCurrentDirectory(), ExclusionsFile);
 
