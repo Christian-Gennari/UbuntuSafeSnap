@@ -16,11 +16,14 @@ var restoreFileArgument = new Argument<string?>("file")
 
 var backupCommand = new Command("backup", "Create a backup of packages and config files");
 
+var initCommand = new Command("init", "Create default targets.txt and exclusions.txt in the current directory");
+
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
 restoreCommand.Arguments.Add(restoreFileArgument);
 
 var rootCommand = new RootCommand("UbuntuSafeSnap — Ubuntu backup & restore utility");
 rootCommand.Subcommands.Add(backupCommand);
+rootCommand.Subcommands.Add(initCommand);
 rootCommand.Subcommands.Add(restoreCommand);
 
 backupCommand.SetAction(async (ParseResult parseResult) =>
@@ -43,6 +46,14 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
     }
 
     return await RunBackupAsync(targetsPath, exclusionsPath);
+});
+
+initCommand.SetAction((ParseResult parseResult) =>
+{
+    string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
+    string exclusionsPath = Path.Combine(Directory.GetCurrentDirectory(), ExclusionsFile);
+
+    return InitService.Initialize(targetsPath, exclusionsPath);
 });
 
 restoreCommand.SetAction(async (ParseResult parseResult) =>
