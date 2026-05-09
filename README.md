@@ -41,6 +41,13 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 
 No .NET SDK required — just download and run.
 
+Using GitHub CLI:
+```bash
+mkdir -p ~/UbuntuSafeSnap
+gh release download --repo EduEdugrade/net25-kurs-5-valfri-Christian-Gennari --pattern UbuntuSafeSnap --dir ~/UbuntuSafeSnap
+chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
+```
+
 Using wget:
 ```bash
 mkdir -p ~/UbuntuSafeSnap
@@ -48,12 +55,14 @@ wget -qO ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-ku
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
-Or using curl:
+Using curl:
 ```bash
 mkdir -p ~/UbuntuSafeSnap
 curl -sL -o ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
+
+> **Note:** If the repository has OAuth App access restrictions, `wget` and `curl` may return a 404 error. In that case, use the GitHub CLI method or download the binary manually from [GitHub Releases](https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest).
 
 ### Option 2: Build from source
 
