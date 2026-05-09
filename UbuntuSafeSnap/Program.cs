@@ -3,16 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using UbuntuSafeSnap.Interfaces;
 using UbuntuSafeSnap.Services;
 
-var configPathOption = new Option<string>("--config-path")
-{
-    Description = "Path to directory containing targets.txt and exclusions.txt",
-};
-configPathOption.DefaultValueFactory = _ => "./";
-
-var nonInteractiveOption = new Option<bool>("--non-interactive")
-{
-    Description = "Skip all interactive prompts; exit with error code if input is needed",
-};
+const string TargetsFile = "targets.txt";
+const string ExclusionsFile = "exclusions.txt";
 
 var restoreFileArgument = new Argument<string>("file")
 {
@@ -20,8 +12,6 @@ var restoreFileArgument = new Argument<string>("file")
 };
 
 var backupCommand = new Command("backup", "Create a backup of packages and config files");
-backupCommand.Options.Add(configPathOption);
-backupCommand.Options.Add(nonInteractiveOption);
 
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
 restoreCommand.Arguments.Add(restoreFileArgument);
@@ -32,15 +22,24 @@ rootCommand.Subcommands.Add(restoreCommand);
 
 backupCommand.SetAction(async (ParseResult parseResult) =>
 {
-    var configPath = parseResult.GetValue(configPathOption)!;
-    var nonInteractive = parseResult.GetValue(nonInteractiveOption);
+    string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
+    string exclusionsPath = Path.Combine(Directory.GetCurrentDirectory(), ExclusionsFile);
 
-    int result = TargetResolverService.EnsureExists(configPath, nonInteractive, out string targetsFile);
-    if (result != 0) return result;
-    result = ExclusionService.EnsureExists(configPath, nonInteractive, out string exclusionsFile);
-    if (result != 0) return result;
+    if (!File.Exists(targetsPath))
+    {
+        Console.Error.WriteLine($"Error: {TargetsFile} not found in current directory.");
+        Console.Error.WriteLine("Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
+        return 1;
+    }
 
-    return await RunBackupAsync(targetsFile, exclusionsFile);
+    if (!File.Exists(exclusionsPath))
+    {
+        Console.Error.WriteLine($"Error: {ExclusionsFile} not found in current directory.");
+        Console.Error.WriteLine("Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
+        return 1;
+    }
+
+    return await RunBackupAsync(targetsPath, exclusionsPath);
 });
 
 restoreCommand.SetAction(async (ParseResult parseResult) =>
