@@ -49,14 +49,14 @@ chmod +x install.sh
 
 ```bash
 cd ~/UbuntuSafeSnap
-./ubuntusafesnap init
+./UbuntuSafeSnap init
 # Edit targets.txt and exclusions.txt to your needs
 ```
 
 ### 2. Create a backup
 
 ```bash
-./ubuntusafesnap backup
+./UbuntuSafeSnap backup
 ```
 
 Creates `backups/ubuntusafesnap-YYYYMMdd-HHmmss.zip`.
@@ -64,14 +64,14 @@ Creates `backups/ubuntusafesnap-YYYYMMdd-HHmmss.zip`.
 ### 3. Restore from a backup
 
 ```bash
-sudo ./ubuntusafesnap restore
+sudo ./UbuntuSafeSnap restore
 # Interactive selection from ./backups/
 ```
 
 Or specify a file directly:
 
 ```bash
-sudo ./ubuntusafesnap restore backups/ubuntusafesnap-20260509-123456.zip
+sudo ./UbuntuSafeSnap restore backups/ubuntusafesnap-20260509-123456.zip
 ```
 
 ## Configuration
