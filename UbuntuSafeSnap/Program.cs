@@ -14,7 +14,13 @@ var restoreFileArgument = new Argument<string?>("file")
     Arity = new ArgumentArity(0, 1),
 };
 
+var keepOption = new Option<int>("--keep")
+{
+    Description = "Number of backups to keep (oldest are pruned)",
+    DefaultValueFactory = _ => 5,
+};
 var backupCommand = new Command("backup", "Create a backup of packages and config files");
+backupCommand.Options.Add(keepOption);
 
 var initCommand = new Command("init", "Create default targets.txt and exclusions.txt in the current directory");
 
@@ -45,7 +51,8 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
         return 1;
     }
 
-    return await RunBackupAsync(targetsPath, exclusionsPath);
+    int keep = parseResult.GetValue(keepOption);
+    return await RunBackupAsync(targetsPath, exclusionsPath, keep);
 });
 
 initCommand.SetAction((ParseResult parseResult) =>
@@ -108,7 +115,7 @@ restoreCommand.SetAction(async (ParseResult parseResult) =>
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
 
-static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile)
+static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile, int keep)
 {
     string stagingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "staging");
 
@@ -140,6 +147,8 @@ static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile)
 
     var archiveService = services.GetRequiredService<IArchiveService>();
     archiveService.CreateArchive(stagingDirectory, archivePath);
+
+    archiveService.PruneOldArchives(backupsDirectory, keep);
 
     return 0;
 }

@@ -38,9 +38,8 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 Run the install script to clean, build, and deploy the self-contained binary:
 
 ```bash
-chmod +x install.sh
-./install.sh                # installs to ~/UbuntuSafeSnap/
-./install.sh /custom/path   # installs to a custom directory
+bash install.sh                # installs to ~/UbuntuSafeSnap/
+bash install.sh /custom/path   # installs to a custom directory
 ```
 
 ## Quick Start
@@ -61,6 +60,12 @@ cd ~/UbuntuSafeSnap
 
 Creates `backups/ubuntusafesnap-YYYYMMdd-HHmmss.zip`.
 
+You can limit the number of backups kept by using the `--keep` option (defaults to 5):
+
+```bash
+./UbuntuSafeSnap backup --keep 3    # keep only the 3 most recent backups
+```
+
 ### 3. Restore from a backup
 
 ```bash
@@ -72,6 +77,20 @@ Or specify a file directly:
 
 ```bash
 sudo ./UbuntuSafeSnap restore backups/ubuntusafesnap-20260509-123456.zip
+```
+
+### 4. Scheduled backups
+
+To run automatic weekly backups, add a cron entry:
+
+```bash
+crontab -e
+```
+
+Add the following line for a weekly backup every Sunday at 02:00, keeping the 5 most recent:
+
+```
+0 2 * * 0 ~/UbuntuSafeSnap/UbuntuSafeSnap backup --keep 5 >> ~/UbuntuSafeSnap/cron.log 2>&1
 ```
 
 ## Configuration
@@ -122,7 +141,7 @@ The application follows a service-oriented architecture using .NET Dependency In
 | **PackageService** | Runs `apt-mark showmanual` and writes `packages.txt` to the staging directory |
 | **ConfigService** | Recursively collects config files from target directories, applies exclusions, writes `manifest.txt` |
 | **ExclusionService** | Evaluates files against extension and filename rules in `exclusions.txt` |
-| **ArchiveService** | Creates `.zip` archives in `./backups/` and cleans up `./staging/` |
+| **ArchiveService** | Creates `.zip` archives in `./backups/`, cleans up `./staging/`, and prunes old backups beyond the `--keep` limit |
 | **RestoreService** | Extracts archives, reinstalls packages, restores files using `manifest.txt` paths |
 | **ConflictResolverService** | Compares SHA256 hashes of conflicting files and provides an interactive Spectre.Console menu for resolution |
 
