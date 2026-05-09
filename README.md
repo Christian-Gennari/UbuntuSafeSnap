@@ -31,13 +31,33 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 
 ## Requirements
 
-- **SDK**: .NET 10.0 (for building from source)
 - **Platform**: Ubuntu/Debian (required for `apt-mark` and `apt install`)
 - **Root access**: Required for `restore` (run with `sudo`). The `backup` command does not require `sudo` and will warn if run as root.
+- **SDK**: .NET 10.0 (only required when building from source)
 
-## Build from source
+## Installation
 
-Run the install script to clean, build, and deploy the self-contained binary:
+### Option 1: Download the binary (recommended)
+
+No .NET SDK required — just download and run.
+
+Using wget:
+```bash
+mkdir -p ~/UbuntuSafeSnap
+wget -qO ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
+chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
+```
+
+Or using curl:
+```bash
+mkdir -p ~/UbuntuSafeSnap
+curl -sL -o ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
+chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
+```
+
+### Option 2: Build from source
+
+Requires .NET 10.0 SDK. Run the install script to clean, build, and deploy:
 
 ```bash
 bash install.sh                # installs to ~/UbuntuSafeSnap/
