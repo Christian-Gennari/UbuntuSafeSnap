@@ -105,8 +105,7 @@ public class RestoreService(IConflictResolverService conflictResolver) : IRestor
         Console.WriteLine($"[RestoreService] Re-installing {packages.Length} package(s)...");
 
         using var process = new Process();
-        process.StartInfo.FileName = "sudo";
-        process.StartInfo.ArgumentList.Add("apt");
+        process.StartInfo.FileName = "apt";
         process.StartInfo.ArgumentList.Add("install");
         process.StartInfo.ArgumentList.Add("-y");
 
@@ -115,19 +114,14 @@ public class RestoreService(IConflictResolverService conflictResolver) : IRestor
             process.StartInfo.ArgumentList.Add(pkg);
         }
 
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
         process.StartInfo.UseShellExecute = false;
 
         process.Start();
-
-        _ = await process.StandardOutput.ReadToEndAsync();
-        string stderr = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
 
         if (process.ExitCode != 0)
         {
-            Console.Error.WriteLine($"[RestoreService] apt install failed with exit code {process.ExitCode}: {stderr}");
+            Console.Error.WriteLine($"[RestoreService] apt install failed with exit code {process.ExitCode}.");
             return process.ExitCode;
         }
 

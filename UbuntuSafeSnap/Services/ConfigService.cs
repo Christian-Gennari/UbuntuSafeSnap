@@ -57,6 +57,9 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
         var directories = new Queue<string>();
         directories.Enqueue(sourceDir);
 
+        int totalCopied = 0;
+        int totalExcluded = 0;
+
         while (directories.Count > 0)
         {
             var currentDir = directories.Dequeue();
@@ -83,13 +86,13 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
                 continue;
             }
 
+            int dirCopied = 0;
+
             foreach (var file in files)
             {
                 if (_exclusionService.ShouldExclude(file))
                 {
-                    Console.WriteLine(
-                        $"[ConfigService] Skipped excluded file: {Path.GetFileName(file)}"
-                    );
+                    totalExcluded++;
                     continue;
                 }
 
@@ -104,7 +107,8 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
                     }
 
                     File.Copy(file, destPath, overwrite: true);
-                    Console.WriteLine($"[ConfigService] Copied: {relativePath}");
+                    dirCopied++;
+                    totalCopied++;
 
                     string absoluteSourceDir = Path.GetFullPath(sourceDir);
                     manifestEntries.Add($"{absoluteSourceDir}|{relativePath}");
@@ -115,10 +119,17 @@ public class ConfigService(IExclusionService exclusionService) : IConfigService
                 }
             }
 
+            if (dirCopied > 0)
+            {
+                Console.WriteLine($"[ConfigService] Copied {dirCopied} file(s) from {currentDir}");
+            }
+
             foreach (var subDir in subDirs)
             {
                 directories.Enqueue(subDir);
             }
         }
+
+        Console.WriteLine($"[ConfigService] Total: {totalCopied} file(s) copied, {totalExcluded} excluded.");
     }
 }
