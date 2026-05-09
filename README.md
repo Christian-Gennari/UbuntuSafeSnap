@@ -2,11 +2,9 @@
 
 # UbuntuSafeSnap
 
-A .NET 10 console application for backing up and restoring Ubuntu system configurations, with smart exclusion of sensitive files and interactive conflict resolution.
+A .NET 10 self-contained executable for backing up and restoring Ubuntu system configurations. Designed for machine migration — back up your packages and dotfiles on one machine, fresh-install Ubuntu, and restore everything as it was.
 
 ## What it does
-
-UbuntuSafeSnap automates the full backup and restore lifecycle for Ubuntu system configurations:
 
 ### Backup
 
@@ -14,7 +12,7 @@ UbuntuSafeSnap automates the full backup and restore lifecycle for Ubuntu system
 - **Config Collection**: Recursively collects configuration files from user-defined directories.
 - **Smart Exclusion**: Automatically skips sensitive files like `.env`, `.key`, `.pem`, and `secrets.*` based on configurable rules.
 - **Manifest Generation**: Records the original source directory for each file, enabling accurate restoration paths.
-- **Archive Generation**: Bundles everything into a timestamped `.zip` archive for easy storage or migration.
+- **Archive Generation**: Bundles everything into a timestamped `.zip` archive stored in `./backups/`.
 
 ### Restore
 
@@ -27,44 +25,44 @@ UbuntuSafeSnap automates the full backup and restore lifecycle for Ubuntu system
   - **View Diff** — Show a git-style inline diff comparing the two versions, then re-prompt
   - **Abort Restore** — Stop the restore process immediately
 - **SHA256 Comparison**: Identical files are automatically skipped without prompting.
+- **Interactive Backup Selection**: If you run restore without specifying a file, a menu lets you pick from available backups in `./backups/`.
 
 ## Requirements
 
-- **SDK**: .NET 10.0
+- **SDK**: .NET 10.0 (for development)
 - **Platform**: Ubuntu/Debian (required for `apt-mark` and `apt install`)
 - **Root access**: Required for `restore` (run with `sudo`)
 
 ## Quick Start
 
-### Create a backup
+### 1. Initialize config files
 
 ```bash
-dotnet build
-dotnet run --project UbuntuSafeSnap backup
+cd ~/UbuntuSafeSnap
+./ubuntusafesnap init
+# Edit targets.txt and exclusions.txt to your needs
 ```
 
-On first run, `targets.txt` and `exclusions.txt` are auto-generated. Edit them to customize which directories to back up and which files to exclude, then re-run.
-
-### Restore from a backup
+### 2. Create a backup
 
 ```bash
-sudo dotnet run --project UbuntuSafeSnap restore ubuntusafesnap-20260508-175127.zip
+./ubuntusafesnap backup
 ```
 
-The `<file>` argument must be a `.zip` archive created by `UbuntuSafeSnap backup`. The restore process will:
+Creates `backups/ubuntusafesnap-YYYYMMdd-HHmmss.zip`.
 
-1. Verify you are running as root
-2. Extract the archive to a temporary staging directory
-3. Reinstall packages listed in `packages.txt`
-4. Restore config files to their original locations, prompting for any conflicts
-
-### Non-interactive backup (e.g. cron)
+### 3. Restore from a backup
 
 ```bash
-dotnet run --project UbuntuSafeSnap backup --non-interactive --config-path /path/to/config/
+sudo ./ubuntusafesnap restore
+# Interactive selection from ./backups/
 ```
 
-The `--non-interactive` flag skips prompts and exits with an error code if config files are missing. Only available for `backup` — restore is always interactive since it requires user decisions on file conflicts.
+Or specify a file directly:
+
+```bash
+sudo ./ubuntusafesnap restore backups/ubuntusafesnap-20260509-123456.zip
+```
 
 ## Configuration
 
@@ -73,9 +71,12 @@ The `--non-interactive` flag skips prompts and exits with an error code if confi
 List directories to include in the backup, one per line. Supports `~` expansion for home directories and `#` for comments.
 
 ```
-# Add directories here, one per line
-/etc/NetworkManager
+# Directories to back up, one per line. ~ expands to your home directory.
 ~/.config
+~/.local/share
+~/.bashrc
+~/.profile
+/etc/NetworkManager
 ```
 
 The home directory (`~` or `/home/user`) is blocked as a target to prevent accidentally backing up the entire home directory.
@@ -84,9 +85,17 @@ The home directory (`~` or `/home/user`) is blocked as a target to prevent accid
 
 Configure which files or extensions to skip.
 
-- Prefix with `.` for extension matching (e.g., `.env`, `.key`, `.pem`)
-- Use full filenames for specific file exclusion (e.g., `secrets.json`, `secrets.lua`)
-- Lines starting with `#` are comments
+```
+# Files matching these patterns will be excluded from backups.
+# Extension rules start with .  (e.g. .env, .key, .pem)
+# Filename rules are just the name (e.g. secrets.json)
+
+.env
+.key
+.pem
+secrets.json
+secrets.lua
+```
 
 ### Manifest (`manifest.txt`)
 
@@ -98,11 +107,12 @@ The application follows a service-oriented architecture using .NET Dependency In
 
 | Service | Responsibility |
 |---------|---------------|
+| **InitService** | Scaffolds `targets.txt` and `exclusions.txt` with sensible defaults |
 | **TargetResolverService** | Resolves and expands paths from `targets.txt`; blocks home directory as target |
 | **PackageService** | Runs `apt-mark showmanual` and writes `packages.txt` to the staging directory |
 | **ConfigService** | Recursively collects config files from target directories, applies exclusions, writes `manifest.txt` |
 | **ExclusionService** | Evaluates files against extension and filename rules in `exclusions.txt` |
-| **ArchiveService** | Creates `.zip` archives from the staging directory and cleans up |
+| **ArchiveService** | Creates `.zip` archives in `./backups/` and cleans up `./staging/` |
 | **RestoreService** | Extracts archives, reinstalls packages, restores files using `manifest.txt` paths |
 | **ConflictResolverService** | Compares SHA256 hashes of conflicting files and provides an interactive Spectre.Console menu for resolution |
 
