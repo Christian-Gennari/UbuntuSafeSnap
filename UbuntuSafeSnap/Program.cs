@@ -1,14 +1,17 @@
 ﻿using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
 using UbuntuSafeSnap.Interfaces;
 using UbuntuSafeSnap.Services;
 
 const string TargetsFile = "targets.txt";
 const string ExclusionsFile = "exclusions.txt";
+const string BackupsDirectory = "backups";
 
-var restoreFileArgument = new Argument<string>("file")
+var restoreFileArgument = new Argument<string?>("file")
 {
-    Description = "Path to the .zip backup to restore",
+    Description = "Path to the .zip backup to restore. If omitted, selects from ./backups/",
+    Arity = new ArgumentArity(0, 1),
 };
 
 var backupCommand = new Command("backup", "Create a backup of packages and config files");
@@ -44,7 +47,44 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
 
 restoreCommand.SetAction(async (ParseResult parseResult) =>
 {
-    var restoreFilePath = parseResult.GetValue(restoreFileArgument);
+    string? restoreFilePath = parseResult.GetValue(restoreFileArgument);
+
+    if (string.IsNullOrWhiteSpace(restoreFilePath))
+    {
+        string backupsPath = Path.Combine(Directory.GetCurrentDirectory(), BackupsDirectory);
+
+        if (!Directory.Exists(backupsPath))
+        {
+            Console.Error.WriteLine($"Error: No backups directory found at {backupsPath}.");
+            Console.Error.WriteLine("Run 'ubuntusafesnap backup' first to create a backup.");
+            return 1;
+        }
+
+        string[] zipFiles = Directory.GetFiles(backupsPath, "*.zip")
+            .OrderDescending()
+            .ToArray();
+
+        if (zipFiles.Length == 0)
+        {
+            Console.Error.WriteLine($"Error: No backup files found in {backupsPath}.");
+            Console.Error.WriteLine("Run 'ubuntusafesnap backup' first to create a backup.");
+            return 1;
+        }
+
+        if (zipFiles.Length == 1)
+        {
+            restoreFilePath = zipFiles[0];
+            Console.WriteLine($"Using only available backup: {Path.GetFileName(restoreFilePath)}");
+        }
+        else
+        {
+            restoreFilePath = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select a backup to restore:")
+                    .AddChoices(zipFiles)
+            );
+        }
+    }
 
     var restoreServices = new ServiceCollection()
         .AddSingleton<IConflictResolverService, ConflictResolverService>()
@@ -52,7 +92,7 @@ restoreCommand.SetAction(async (ParseResult parseResult) =>
         .BuildServiceProvider();
 
     var restoreService = restoreServices.GetRequiredService<IRestoreService>();
-    return await restoreService.RestoreAsync(restoreFilePath!);
+    return await restoreService.RestoreAsync(restoreFilePath);
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
