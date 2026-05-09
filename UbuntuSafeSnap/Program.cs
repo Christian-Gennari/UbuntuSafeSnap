@@ -81,8 +81,9 @@ static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile)
     var configService = services.GetRequiredService<IConfigService>();
     await configService.CollectConfigFilesAsync(targetDirectories, stagingDirectory);
 
+    string backupsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "backups");
     string archivePath = Path.Combine(
-        Directory.GetCurrentDirectory(),
+        backupsDirectory,
         $"ubuntusafesnap-{DateTime.Now:yyyyMMdd-HHmmss}.zip"
     );
 
