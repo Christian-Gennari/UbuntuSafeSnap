@@ -133,9 +133,9 @@ List directories to include in the backup, one per line. Supports `~` expansion 
 ```
 # Directories to back up, one per line. ~ expands to your home directory.
 ~/.config
-~/.local/share
 ~/.bashrc
 ~/.profile
+~/.ssh
 /etc/NetworkManager
 ```
 
@@ -153,8 +153,16 @@ Configure which files or extensions to skip.
 .env
 .key
 .pem
+.log
+.lock
+.pid
+.db
+.sqlite
 secrets.json
 secrets.lua
+id_rsa
+id_ed25519
+id_ecdsa
 ```
 
 ### Manifest (`manifest.txt`)

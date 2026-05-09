@@ -7,9 +7,9 @@ public static class InitService
 # Lines starting with # are comments and will be ignored.
 
 ~/.config
-~/.local/share
 ~/.bashrc
 ~/.profile
+~/.ssh
 /etc/NetworkManager
 """;
 
@@ -22,8 +22,16 @@ public static class InitService
 .env
 .key
 .pem
+.log
+.lock
+.pid
+.db
+.sqlite
 secrets.json
 secrets.lua
+id_rsa
+id_ed25519
+id_ecdsa
 """;
 
     public static int Initialize(string targetsPath, string exclusionsPath)
