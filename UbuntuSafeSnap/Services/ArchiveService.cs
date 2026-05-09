@@ -20,9 +20,8 @@ public class ArchiveService : IArchiveService
         string? outputDir = Path.GetDirectoryName(outputPath);
         if (outputDir is not null && !Directory.Exists(outputDir))
         {
-            throw new DirectoryNotFoundException(
-                $"[ArchiveService] Output directory not found: {outputDir}"
-            );
+            Directory.CreateDirectory(outputDir);
+            Console.WriteLine($"[ArchiveService] Created output directory: {outputDir}");
         }
 
         Console.WriteLine($"[ArchiveService] Creating archive: {outputPath}");
