@@ -21,8 +21,10 @@ mkdir -p "$DEST_DIR"
 cp "$PUBLISH_OUTPUT" "$DEST_DIR/"
 chmod +x "$DEST_DIR/$BINARY_NAME"
 
+DISPLAY_DIR="${DEST_DIR/#$HOME\//~/}"
+
 echo ""
-echo "Binary copied to: $DEST_DIR/$BINARY_NAME"
+echo "Binary copied to: $DISPLAY_DIR/$BINARY_NAME"
 echo "Next steps:"
-echo "  cd $DEST_DIR"
+echo "  cd $DISPLAY_DIR"
 echo "  ./UbuntuSafeSnap init"
