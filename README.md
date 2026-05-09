@@ -11,8 +11,10 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 - **Package Extraction**: Captures the list of manually installed packages via `apt-mark showmanual`.
 - **Config Collection**: Recursively collects configuration files from user-defined directories.
 - **Smart Exclusion**: Automatically skips sensitive files like `.env`, `.key`, `.pem`, and `secrets.*` based on configurable rules.
+- **Symlink and Special File Handling**: Skips symlinks, broken symlinks, sockets, and pipes gracefully instead of crashing.
 - **Manifest Generation**: Records the original source directory for each file, enabling accurate restoration paths.
 - **Archive Generation**: Bundles everything into a timestamped `.zip` archive stored in `./backups/`.
+- **Backup Pruning**: The `--keep` option (default: 5) automatically removes old backups beyond the specified count.
 
 ### Restore
 
@@ -24,14 +26,14 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
   - **Skip** — Keep the existing system file unchanged
   - **View Diff** — Show a git-style inline diff comparing the two versions, then re-prompt
   - **Abort Restore** — Stop the restore process immediately
-- **SHA256 Comparison**: Identical files are automatically skipped without prompting.
+- **SHA256 Comparison**: Identical files are automatically skipped and logged as "Skipped (identical)", while user-initiated skips are logged separately.
 - **Interactive Backup Selection**: If you run restore without specifying a file, a menu lets you pick from available backups in `./backups/`.
 
 ## Requirements
 
 - **SDK**: .NET 10.0 (for building from source)
 - **Platform**: Ubuntu/Debian (required for `apt-mark` and `apt install`)
-- **Root access**: Required for `restore` (run with `sudo`)
+- **Root access**: Required for `restore` (run with `sudo`). The `backup` command does not require `sudo` and will warn if run as root.
 
 ## Build from source
 
@@ -97,7 +99,7 @@ Add the following line for a weekly backup every Sunday at 02:00, keeping the 5 
 
 ### Targets (`targets.txt`)
 
-List directories to include in the backup, one per line. Supports `~` expansion for home directories and `#` for comments.
+List directories to include in the backup, one per line. Supports `~` expansion for home directories and `#` for comments. When running under `sudo`, `~` resolves to the real user's home directory (not `/root`).
 
 ```
 # Directories to back up, one per line. ~ expands to your home directory.
@@ -137,9 +139,9 @@ The application follows a service-oriented architecture using .NET Dependency In
 | Service | Responsibility |
 |---------|---------------|
 | **InitService** | Scaffolds `targets.txt` and `exclusions.txt` with sensible defaults |
-| **TargetResolverService** | Resolves and expands paths from `targets.txt`; blocks home directory as target |
+| **TargetResolverService** | Resolves and expands paths from `targets.txt`; blocks home directory as target; resolves `~` to real user home under `sudo` |
 | **PackageService** | Runs `apt-mark showmanual` and writes `packages.txt` to the staging directory |
-| **ConfigService** | Recursively collects config files from target directories, applies exclusions, writes `manifest.txt` |
+| **ConfigService** | Recursively collects config files from target directories, applies exclusions, skips symlinks and special files, writes `manifest.txt` |
 | **ExclusionService** | Evaluates files against extension and filename rules in `exclusions.txt` |
 | **ArchiveService** | Creates `.zip` archives in `./backups/`, cleans up `./staging/`, and prunes old backups beyond the `--keep` limit |
 | **RestoreService** | Extracts archives, reinstalls packages, restores files using `manifest.txt` paths |
