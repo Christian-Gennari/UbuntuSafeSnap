@@ -1,8 +1,6 @@
-﻿using UbuntuSafeSnap.Interfaces;
+﻿namespace UbuntuSafeSnap.Services;
 
-namespace UbuntuSafeSnap.Services;
-
-public class ExclusionService : IExclusionService
+public class ExclusionService
 {
     private readonly HashSet<string> _forbiddenExtensions = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _forbiddenFilenames = new(StringComparer.OrdinalIgnoreCase);

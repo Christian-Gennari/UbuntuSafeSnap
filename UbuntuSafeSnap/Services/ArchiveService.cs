@@ -1,10 +1,8 @@
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using UbuntuSafeSnap.Interfaces;
-
 namespace UbuntuSafeSnap.Services;
 
-public class ArchiveService : IArchiveService
+public class ArchiveService
 {
     private const UnixFileMode DirectoryPermissions =
         UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |

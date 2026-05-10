@@ -1,8 +1,6 @@
-using UbuntuSafeSnap.Interfaces;
-
 namespace UbuntuSafeSnap.Services;
 
-public class TargetResolverService : ITargetResolverService
+public class TargetResolverService
 {
     public IEnumerable<string> Resolve(string filePath)
     {
