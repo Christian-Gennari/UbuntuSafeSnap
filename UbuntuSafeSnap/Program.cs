@@ -1,12 +1,9 @@
 ﻿using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-using Spectre.Console;
-using UbuntuSafeSnap.Models;
-using UbuntuSafeSnap.Services;
+using UbuntuSafeSnap.Commands;
+using UbuntuSafeSnap.UI;
 
 const string TargetsFile = "targets.txt";
 const string ExclusionsFile = "exclusions.txt";
-const string BackupsDirectory = "backups";
 
 var restoreFileArgument = new Argument<string?>("file")
 {
@@ -36,8 +33,8 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
 {
     if (Environment.UserName == "root" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUDO_USER")))
     {
-        Console.WriteLine("Warning: Running backup as root without sudo. Home directory targets will resolve to /root.");
-        Console.WriteLine("Consider running without sudo: UbuntuSafeSnap backup");
+        Log.Info("Backup", "Warning: Running backup as root without sudo. Home directory targets will resolve to /root.");
+        Log.Info("Backup", "Consider running without sudo: UbuntuSafeSnap backup");
     }
 
     string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
@@ -45,20 +42,20 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
 
     if (!File.Exists(targetsPath))
     {
-        Console.Error.WriteLine($"Error: {TargetsFile} not found in current directory.");
-        Console.Error.WriteLine("Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
+        Log.Error("Backup", $"{TargetsFile} not found in current directory.");
+        Log.Error("Backup", "Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
         return 1;
     }
 
     if (!File.Exists(exclusionsPath))
     {
-        Console.Error.WriteLine($"Error: {ExclusionsFile} not found in current directory.");
-        Console.Error.WriteLine("Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
+        Log.Error("Backup", $"{ExclusionsFile} not found in current directory.");
+        Log.Error("Backup", "Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
         return 1;
     }
 
     int keep = parseResult.GetValue(keepOption);
-    return await RunBackupAsync(targetsPath, exclusionsPath, keep);
+    return await BackupCommand.ExecuteAsync(targetsPath, exclusionsPath, keep);
 });
 
 initCommand.SetAction((ParseResult parseResult) =>
@@ -66,96 +63,13 @@ initCommand.SetAction((ParseResult parseResult) =>
     string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
     string exclusionsPath = Path.Combine(Directory.GetCurrentDirectory(), ExclusionsFile);
 
-    return InitService.Initialize(targetsPath, exclusionsPath);
+    return InitCommand.Execute(targetsPath, exclusionsPath);
 });
 
 restoreCommand.SetAction(async (ParseResult parseResult) =>
 {
     string? restoreFilePath = parseResult.GetValue(restoreFileArgument);
-
-    if (string.IsNullOrWhiteSpace(restoreFilePath))
-    {
-        string backupsPath = Path.Combine(Directory.GetCurrentDirectory(), BackupsDirectory);
-
-        if (!Directory.Exists(backupsPath))
-        {
-            Console.Error.WriteLine($"Error: No backups directory found at {backupsPath}.");
-            Console.Error.WriteLine("Run 'ubuntusafesnap backup' first to create a backup.");
-            return 1;
-        }
-
-        string[] zipFiles = Directory.GetFiles(backupsPath, "*.zip")
-            .OrderDescending()
-            .ToArray();
-
-        if (zipFiles.Length == 0)
-        {
-            Console.Error.WriteLine($"Error: No backup files found in {backupsPath}.");
-            Console.Error.WriteLine("Run 'ubuntusafesnap backup' first to create a backup.");
-            return 1;
-        }
-
-        if (zipFiles.Length == 1)
-        {
-            restoreFilePath = zipFiles[0];
-            Console.WriteLine($"Using only available backup: {Path.GetFileName(restoreFilePath)}");
-        }
-        else
-        {
-            restoreFilePath = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select a backup to restore:")
-                    .AddChoices(zipFiles)
-            );
-        }
-    }
-
-    var restoreServices = new ServiceCollection()
-        .AddSingleton<ConflictResolverService>()
-        .AddSingleton<RestoreService>()
-        .BuildServiceProvider();
-
-    var restoreService = restoreServices.GetRequiredService<RestoreService>();
-    return await restoreService.RestoreAsync(restoreFilePath);
+    return await RestoreCommand.ExecuteAsync(restoreFilePath);
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
-
-static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile, int keep)
-{
-    string stagingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "staging");
-
-    if (Directory.Exists(stagingDirectory))
-        Directory.Delete(stagingDirectory, recursive: true);
-
-    var services = new ServiceCollection()
-        .AddSingleton<TargetResolverService>()
-        .AddSingleton(_ => new ExclusionService(exclusionsFile))
-        .AddSingleton<PackageService>()
-        .AddSingleton<ConfigService>()
-        .AddSingleton<ArchiveService>()
-        .BuildServiceProvider();
-
-    var targetResolver = services.GetRequiredService<TargetResolverService>();
-    var targetDirectories = targetResolver.Resolve(targetsFile).ToArray();
-
-    var packageService = services.GetRequiredService<PackageService>();
-    await packageService.ExtractPackageListAsync(stagingDirectory);
-
-    var configService = services.GetRequiredService<ConfigService>();
-    await configService.CollectConfigFilesAsync(targetDirectories, stagingDirectory);
-
-    string backupsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "backups");
-    string archivePath = Path.Combine(
-        backupsDirectory,
-        $"ubuntusafesnap-{DateTime.Now:yyyyMMdd-HHmmss}.zip"
-    );
-
-    var archiveService = services.GetRequiredService<ArchiveService>();
-    archiveService.CreateArchive(stagingDirectory, archivePath);
-
-    archiveService.PruneOldArchives(backupsDirectory, keep);
-
-    return 0;
-}
-
