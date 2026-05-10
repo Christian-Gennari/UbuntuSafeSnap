@@ -58,7 +58,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
                 return packageResult;
             }
 
-            var (restored, skipped, aborted) = await RestoreConfigFilesAsync(stagingDirectory);
+            var (restored, skipped, aborted) = await RestoreFilesAsync(stagingDirectory);
 
             if (aborted)
             {
@@ -130,7 +130,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
         return 0;
     }
 
-    private async Task<(int restored, int skipped, bool aborted)> RestoreConfigFilesAsync(string stagingDirectory)
+    private async Task<(int restored, int skipped, bool aborted)> RestoreFilesAsync(string stagingDirectory)
     {
         int restored = 0;
         int skipped = 0;
