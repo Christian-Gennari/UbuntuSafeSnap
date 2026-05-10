@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
-using UbuntuSafeSnap.Interfaces;
+using UbuntuSafeSnap.Models;
 using UbuntuSafeSnap.Services;
 
 const string TargetsFile = "targets.txt";
@@ -111,11 +111,11 @@ restoreCommand.SetAction(async (ParseResult parseResult) =>
     }
 
     var restoreServices = new ServiceCollection()
-        .AddSingleton<IConflictResolverService, ConflictResolverService>()
-        .AddSingleton<IRestoreService, RestoreService>()
+        .AddSingleton<ConflictResolverService>()
+        .AddSingleton<RestoreService>()
         .BuildServiceProvider();
 
-    var restoreService = restoreServices.GetRequiredService<IRestoreService>();
+    var restoreService = restoreServices.GetRequiredService<RestoreService>();
     return await restoreService.RestoreAsync(restoreFilePath);
 });
 
@@ -129,20 +129,20 @@ static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile,
         Directory.Delete(stagingDirectory, recursive: true);
 
     var services = new ServiceCollection()
-        .AddSingleton<ITargetResolverService, TargetResolverService>()
-        .AddSingleton<IExclusionService, ExclusionService>(_ => new ExclusionService(exclusionsFile))
-        .AddSingleton<IPackageService, PackageService>()
-        .AddSingleton<IConfigService, ConfigService>()
-        .AddSingleton<IArchiveService, ArchiveService>()
+        .AddSingleton<TargetResolverService>()
+        .AddSingleton(_ => new ExclusionService(exclusionsFile))
+        .AddSingleton<PackageService>()
+        .AddSingleton<ConfigService>()
+        .AddSingleton<ArchiveService>()
         .BuildServiceProvider();
 
-    var targetResolver = services.GetRequiredService<ITargetResolverService>();
+    var targetResolver = services.GetRequiredService<TargetResolverService>();
     var targetDirectories = targetResolver.Resolve(targetsFile).ToArray();
 
-    var packageService = services.GetRequiredService<IPackageService>();
+    var packageService = services.GetRequiredService<PackageService>();
     await packageService.ExtractPackageListAsync(stagingDirectory);
 
-    var configService = services.GetRequiredService<IConfigService>();
+    var configService = services.GetRequiredService<ConfigService>();
     await configService.CollectConfigFilesAsync(targetDirectories, stagingDirectory);
 
     string backupsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "backups");
@@ -151,7 +151,7 @@ static async Task<int> RunBackupAsync(string targetsFile, string exclusionsFile,
         $"ubuntusafesnap-{DateTime.Now:yyyyMMdd-HHmmss}.zip"
     );
 
-    var archiveService = services.GetRequiredService<IArchiveService>();
+    var archiveService = services.GetRequiredService<ArchiveService>();
     archiveService.CreateArchive(stagingDirectory, archivePath);
 
     archiveService.PruneOldArchives(backupsDirectory, keep);

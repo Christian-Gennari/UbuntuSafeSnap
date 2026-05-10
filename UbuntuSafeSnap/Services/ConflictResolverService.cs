@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using Spectre.Console;
-using UbuntuSafeSnap.Interfaces;
+using UbuntuSafeSnap.Models;
 
 namespace UbuntuSafeSnap.Services;
 
-public class ConflictResolverService : IConflictResolverService
+public class ConflictResolverService
 {
     private const long MaxDiffFileSize = 1 * 1024 * 1024;
 

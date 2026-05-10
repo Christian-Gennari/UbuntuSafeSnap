@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using System.IO.Compression;
-using UbuntuSafeSnap.Interfaces;
+using UbuntuSafeSnap.Models;
 
 namespace UbuntuSafeSnap.Services;
 
-public class RestoreService(IConflictResolverService conflictResolver) : IRestoreService
+public class RestoreService(ConflictResolverService conflictResolver)
 {
-    private readonly IConflictResolverService _conflictResolver = conflictResolver;
+    private readonly ConflictResolverService _conflictResolver = conflictResolver;
 
     public async Task<int> RestoreAsync(string archivePath)
     {

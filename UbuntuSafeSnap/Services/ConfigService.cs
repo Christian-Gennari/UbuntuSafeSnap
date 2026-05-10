@@ -1,10 +1,8 @@
-﻿using UbuntuSafeSnap.Interfaces;
+﻿namespace UbuntuSafeSnap.Services;
 
-namespace UbuntuSafeSnap.Services;
-
-public class ConfigService(IExclusionService exclusionService) : IConfigService
+public class ConfigService(ExclusionService exclusionService)
 {
-    private readonly IExclusionService _exclusionService = exclusionService;
+    private readonly ExclusionService _exclusionService = exclusionService;
 
     public async Task CollectConfigFilesAsync(
         IEnumerable<string> sourceDirectories,
