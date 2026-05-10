@@ -16,7 +16,7 @@ var keepOption = new Option<int>("--keep")
     Description = "Number of backups to keep (oldest are pruned)",
     DefaultValueFactory = _ => 5,
 };
-var backupCommand = new Command("backup", "Create a backup of packages and config files");
+var backupCommand = new Command("backup", "Create a backup of packages and files");
 backupCommand.Options.Add(keepOption);
 
 var initCommand = new Command("init", "Create default targets.txt and exclusions.txt in the current directory");

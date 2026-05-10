@@ -2,14 +2,14 @@
 
 # UbuntuSafeSnap
 
-A .NET 10 self-contained executable for backing up and restoring Ubuntu system configurations. Back up your packages and dotfiles on one machine, fresh-install Ubuntu, and restore everything as it was.
+A .NET 10 self-contained executable for backing up and restoring Ubuntu system configuration and files. Back up your packages and dotfiles on one machine, fresh-install Ubuntu, and restore everything as it was.
 
 ## Features
 
 ### Backup
 
 - Captures manually installed packages via `apt-mark showmanual`
-- Recursively collects config files from user-defined directories
+- Recursively collects files from user-defined directories
 - Skips sensitive files (`.env`, `.key`, `.pem`, `secrets.*`) and directories (`node_modules/`, `.cache/`, `.git/`) based on configurable rules
 - Skips symlinks, broken symlinks, sockets, and pipes gracefully
 - Records source directories in `manifest.txt` for accurate restore paths
@@ -21,7 +21,7 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 
 - Requires `sudo` — verifies root privileges before proceeding
 - Reinstalls packages from `packages.txt` via `apt install -y`
-- Restores config files to their original locations using `manifest.txt`
+- Restores files to their original locations using `manifest.txt`
 - Skips identical files automatically (SHA256 comparison)
 - Presents an interactive backup selection menu if no file is specified
 
@@ -219,7 +219,7 @@ The application uses a service-oriented architecture with .NET Dependency Inject
 
 | Command | Description |
 |---------|-------------|
-| `BackupCommand` | Orchestrates the backup pipeline: resolve targets → extract packages → collect configs → create archive → prune old backups |
+| `BackupCommand` | Orchestrates the backup pipeline: resolve targets → extract packages → collect files → create archive → prune old backups |
 | `RestoreCommand` | Handles backup selection (interactive or via argument), then delegates to `RestoreService` |
 | `InitCommand` | Scaffolds `targets.txt` and `exclusions.txt` with default values |
 
@@ -228,7 +228,7 @@ The application uses a service-oriented architecture with .NET Dependency Inject
 | Service | Description |
 |---------|-------------|
 | `PackageService` | Runs `apt-mark showmanual` and writes `packages.txt` |
-| `ConfigService` | Recursively collects config files, applies exclusions, skips symlinks/special files, writes `manifest.txt` |
+| `CollectorService` | Recursively collects files, applies exclusions, skips symlinks/special files, writes `manifest.txt` |
 | `ArchiveService` | Creates `.zip` archives, cleans up staging, and prunes old backups beyond the `--keep` limit |
 
 **`Services/Shared/`** — Shared utilities
