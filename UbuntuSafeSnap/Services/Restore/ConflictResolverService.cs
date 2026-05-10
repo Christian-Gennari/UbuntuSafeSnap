@@ -26,7 +26,6 @@ public class ConflictResolverService
 
         if (stagingHash == destHash)
         {
-            AnsiConsole.MarkupLine($"[green][[ConflictResolver]][/] Files are identical, skipping: {ConsolePrompt.EscapeMarkup(destFile)}");
             return ConflictResolution.Identical;
         }
 
