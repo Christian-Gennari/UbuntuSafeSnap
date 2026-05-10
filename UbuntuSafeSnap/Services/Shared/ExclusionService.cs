@@ -1,4 +1,4 @@
-﻿namespace UbuntuSafeSnap.Services;
+namespace UbuntuSafeSnap.Services.Shared;
 
 public class ExclusionService
 {
@@ -15,7 +15,7 @@ public class ExclusionService
         if (!File.Exists(filePath))
         {
             throw new FileNotFoundException(
-                $"[ExclusionService] Exclusion file not found: {filePath}",
+                $"Exclusion file not found: {filePath}",
                 filePath);
         }
 

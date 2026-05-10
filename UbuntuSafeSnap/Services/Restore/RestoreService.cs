@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using UbuntuSafeSnap.Models;
+using UbuntuSafeSnap.UI;
 
-namespace UbuntuSafeSnap.Services;
+namespace UbuntuSafeSnap.Services.Restore;
 
 public class RestoreService(ConflictResolverService conflictResolver)
 {
@@ -14,13 +15,13 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         if (Environment.UserName != "root")
         {
-            Console.Error.WriteLine("Run this command with sudo.");
+            Log.Error("RestoreService", "Run this command with sudo.");
             return 1;
         }
 
         if (!File.Exists(archivePath))
         {
-            Console.Error.WriteLine($"[RestoreService] Archive not found: {archivePath}");
+            Log.Error("RestoreService", $"Archive not found: {archivePath}");
             return 1;
         }
 
@@ -31,7 +32,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         try
         {
-            Console.WriteLine($"[RestoreService] Extracting archive to: {stagingDirectory}");
+            Log.Info("RestoreService", $"Extracting archive to: {stagingDirectory}");
 
             try
             {
@@ -39,21 +40,21 @@ public class RestoreService(ConflictResolverService conflictResolver)
             }
             catch (InvalidDataException ex)
             {
-                Console.Error.WriteLine($"[RestoreService] Archive is corrupted or invalid: {ex.Message}");
+                Log.Error("RestoreService", $"Archive is corrupted or invalid: {ex.Message}");
                 return 1;
             }
             catch (IOException ex)
             {
-                Console.Error.WriteLine($"[RestoreService] IO error extracting archive: {ex.Message}");
+                Log.Error("RestoreService", $"IO error extracting archive: {ex.Message}");
                 return 1;
             }
 
-            Console.WriteLine("[RestoreService] Archive extracted successfully.");
+            Log.Info("RestoreService", "Archive extracted successfully.");
 
             int packageResult = await ReinstallPackagesAsync(stagingDirectory);
             if (packageResult != 0)
             {
-                Console.Error.WriteLine("[RestoreService] Package re-installation failed. Aborting restore.");
+                Log.Error("RestoreService", "Package re-installation failed. Aborting restore.");
                 return packageResult;
             }
 
@@ -61,11 +62,11 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
             if (aborted)
             {
-                Console.Error.WriteLine($"[RestoreService] Restore aborted. {restored} file(s) restored, {skipped} file(s) skipped before abort.");
+                Log.Error("RestoreService", $"Restore aborted. {restored} file(s) restored, {skipped} file(s) skipped before abort.");
                 return 1;
             }
 
-            Console.WriteLine($"[RestoreService] Restore complete. {restored} file(s) restored. {skipped} file(s) skipped.");
+            Log.Info("RestoreService", $"Restore complete. {restored} file(s) restored. {skipped} file(s) skipped.");
 
             return 0;
         }
@@ -74,7 +75,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
             if (Directory.Exists(stagingDirectory))
             {
                 Directory.Delete(stagingDirectory, recursive: true);
-                Console.WriteLine($"[RestoreService] Cleaned up staging directory: {stagingDirectory}");
+                Log.Info("RestoreService", $"Cleaned up staging directory: {stagingDirectory}");
             }
         }
     }
@@ -85,7 +86,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         if (!File.Exists(packagesFile))
         {
-            Console.WriteLine("[RestoreService] No packages.txt found in archive. Skipping package re-installation.");
+            Log.Info("RestoreService", "No packages.txt found in archive. Skipping package re-installation.");
             return 0;
         }
 
@@ -98,11 +99,11 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         if (packages.Length == 0)
         {
-            Console.WriteLine("[RestoreService] packages.txt is empty. No packages to reinstall.");
+            Log.Info("RestoreService", "packages.txt is empty. No packages to reinstall.");
             return 0;
         }
 
-        Console.WriteLine($"[RestoreService] Re-installing {packages.Length} package(s)...");
+        Log.Info("RestoreService", $"Re-installing {packages.Length} package(s)...");
 
         using var process = new Process();
         process.StartInfo.FileName = "apt";
@@ -121,11 +122,11 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         if (process.ExitCode != 0)
         {
-            Console.Error.WriteLine($"[RestoreService] apt install failed with exit code {process.ExitCode}.");
+            Log.Error("RestoreService", $"apt install failed with exit code {process.ExitCode}.");
             return process.ExitCode;
         }
 
-        Console.WriteLine("[RestoreService] Package re-installation complete.");
+        Log.Info("RestoreService", "Package re-installation complete.");
         return 0;
     }
 
@@ -152,12 +153,12 @@ public class RestoreService(ConflictResolverService conflictResolver)
             }
             catch (UnauthorizedAccessException)
             {
-                Console.WriteLine($"[RestoreService] Unauthorized access to {currentDir}. Skipping...");
+                Log.Info("RestoreService", $"Unauthorized access to {currentDir}. Skipping...");
                 continue;
             }
             catch (DirectoryNotFoundException)
             {
-                Console.WriteLine($"[RestoreService] Directory not found: {currentDir}. Skipping...");
+                Log.Info("RestoreService", $"Directory not found: {currentDir}. Skipping...");
                 continue;
             }
 
@@ -186,23 +187,23 @@ public class RestoreService(ConflictResolverService conflictResolver)
                     switch (resolution)
                     {
                         case ConflictResolution.Identical:
-                            Console.WriteLine($"[RestoreService] Skipped (identical): {destPath}");
+                            Log.Info("RestoreService", $"Skipped (identical): {destPath}");
                             skipped++;
                             break;
                         case ConflictResolution.Skip:
-                            Console.WriteLine($"[RestoreService] Skipped (user choice): {destPath}");
+                            Log.Info("RestoreService", $"Skipped (user choice): {destPath}");
                             skipped++;
                             break;
                         case ConflictResolution.Overwrite:
                             try
                             {
                                 File.Copy(file, destPath, overwrite: true);
-                                Console.WriteLine($"[RestoreService] Overwritten: {destPath}");
+                                Log.Info("RestoreService", $"Overwritten: {destPath}");
                                 restored++;
                             }
                             catch (UnauthorizedAccessException)
                             {
-                                Console.WriteLine($"[RestoreService] Unauthorized access to destination: {destPath}");
+                                Log.Info("RestoreService", $"Unauthorized access to destination: {destPath}");
                                 skipped++;
                             }
                             break;
@@ -222,12 +223,12 @@ public class RestoreService(ConflictResolverService conflictResolver)
                     }
 
                     File.Copy(file, destPath, overwrite: false);
-                    Console.WriteLine($"[RestoreService] Restored: {destPath}");
+                    Log.Info("RestoreService", $"Restored: {destPath}");
                     restored++;
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    Console.WriteLine($"[RestoreService] Unauthorized access to destination: {destPath}");
+                    Log.Info("RestoreService", $"Unauthorized access to destination: {destPath}");
                     skipped++;
                 }
             }
@@ -249,7 +250,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         if (!File.Exists(manifestPath))
         {
-            Console.WriteLine("[RestoreService] No manifest.txt found in archive. Files will be restored to /.");
+            Log.Info("RestoreService", "No manifest.txt found in archive. Files will be restored to /.");
             return manifest;
         }
 
@@ -269,7 +270,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
             manifest[relativePath] = sourceDir;
         }
 
-        Console.WriteLine($"[RestoreService] Loaded manifest with {manifest.Count} entries.");
+        Log.Info("RestoreService", $"Loaded manifest with {manifest.Count} entries.");
         return manifest;
     }
 }

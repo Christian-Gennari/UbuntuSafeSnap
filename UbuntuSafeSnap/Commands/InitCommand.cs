@@ -1,6 +1,8 @@
-namespace UbuntuSafeSnap.Services;
+using UbuntuSafeSnap.UI;
 
-public static class InitService
+namespace UbuntuSafeSnap.Commands;
+
+public static class InitCommand
 {
     private const string DefaultTargets = """
 # Directories to back up, one per line. ~ expands to your home directory.
@@ -34,46 +36,45 @@ id_ed25519
 id_ecdsa
 """;
 
-    public static int Initialize(string targetsPath, string exclusionsPath)
+    public static int Execute(string targetsPath, string exclusionsPath)
     {
-        int exitCode = 0;
         bool targetsCreated = false;
         bool exclusionsCreated = false;
 
         if (!File.Exists(targetsPath))
         {
             File.WriteAllText(targetsPath, DefaultTargets);
-            Console.WriteLine($"Created {targetsPath} with default configuration.");
+            Log.Info("Init", $"Created {targetsPath} with default configuration.");
             targetsCreated = true;
         }
         else
         {
-            Console.WriteLine($"targets.txt already exists — skipped.");
+            Log.Info("Init", "targets.txt already exists — skipped.");
         }
 
         if (!File.Exists(exclusionsPath))
         {
             File.WriteAllText(exclusionsPath, DefaultExclusions);
-            Console.WriteLine($"Created {exclusionsPath} with default configuration.");
+            Log.Info("Init", $"Created {exclusionsPath} with default configuration.");
             exclusionsCreated = true;
         }
         else
         {
-            Console.WriteLine($"exclusions.txt already exists — skipped.");
+            Log.Info("Init", "exclusions.txt already exists — skipped.");
         }
 
         if (targetsCreated || exclusionsCreated)
         {
             Console.WriteLine();
-            Console.WriteLine("Review the created file(s) and adjust to your needs, then run:");
+            Log.Info("Init", "Review the created file(s) and adjust to your needs, then run:");
             Console.WriteLine("  ubuntusafesnap backup");
         }
         else
         {
             Console.WriteLine();
-            Console.WriteLine("All configuration files already exist. No changes made.");
+            Log.Info("Init", "All configuration files already exist. No changes made.");
         }
 
-        return exitCode;
+        return 0;
     }
 }

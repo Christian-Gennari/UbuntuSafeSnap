@@ -1,8 +1,9 @@
 using System.Security.Cryptography;
 using Spectre.Console;
 using UbuntuSafeSnap.Models;
+using UbuntuSafeSnap.UI;
 
-namespace UbuntuSafeSnap.Services;
+namespace UbuntuSafeSnap.Services.Restore;
 
 public class ConflictResolverService
 {
@@ -23,11 +24,11 @@ public class ConflictResolverService
 
         if (stagingHash == destHash)
         {
-            AnsiConsole.MarkupLine($"[green][[ConflictResolver]][/] Files are identical, skipping: {EscapeMarkup(destFile)}");
+            AnsiConsole.MarkupLine($"[green][[ConflictResolver]][/] Files are identical, skipping: {ConsolePrompt.EscapeMarkup(destFile)}");
             return ConflictResolution.Identical;
         }
 
-        if (!AnsiConsole.Console.Profile.Capabilities.Interactive)
+        if (!ConsolePrompt.IsInteractive)
         {
             Console.Error.WriteLine($"[ConflictResolver] Conflict requires user input: {destFile}");
             Console.Error.WriteLine("[ConflictResolver] Re-run in an interactive terminal to resolve.");
@@ -38,10 +39,13 @@ public class ConflictResolverService
         {
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[yellow][[ConflictResolver]][/] Conflict detected:");
-            AnsiConsole.MarkupLine($"  [grey]Backup: [/] {EscapeMarkup(stagingFile)}");
-            AnsiConsole.MarkupLine($"  [grey]System:[/] {EscapeMarkup(destFile)}");
+            AnsiConsole.MarkupLine($"  [grey]Backup: [/] {ConsolePrompt.EscapeMarkup(stagingFile)}");
+            AnsiConsole.MarkupLine($"  [grey]System:[/] {ConsolePrompt.EscapeMarkup(destFile)}");
 
-            var choice = PromptChoice();
+            var choice = ConsolePrompt.PromptSelection(
+                "How would you like to resolve this conflict?",
+                ["Overwrite", "Skip", "View Diff", "Abort Restore"]
+            );
 
             if (choice == "View Diff")
             {
@@ -51,7 +55,7 @@ public class ConflictResolverService
 
             if (choice == "Overwrite")
             {
-                if (!AnsiConsole.Confirm($"Are you sure you want to overwrite {EscapeMarkup(destFile)}?"))
+                if (!ConsolePrompt.Confirm($"Are you sure you want to overwrite {ConsolePrompt.EscapeMarkup(destFile)}?"))
                 {
                     continue;
                 }
@@ -69,15 +73,6 @@ public class ConflictResolverService
         }
     }
 
-    private static string PromptChoice()
-    {
-        return AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("How would you like to resolve this [yellow]conflict[/]?")
-                .AddChoices("Overwrite", "Skip", "View Diff", "Abort Restore")
-        );
-    }
-
     private static async Task<string> ComputeSha256Async(string filePath)
     {
         using var stream = File.OpenRead(filePath);
@@ -88,7 +83,7 @@ public class ConflictResolverService
     private static void ShowDiff(string stagingFile, string destFile)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[bold]Diff[/]: {EscapeMarkup(stagingFile)} vs {EscapeMarkup(destFile)}");
+        AnsiConsole.MarkupLine($"[bold]Diff[/]: {ConsolePrompt.EscapeMarkup(stagingFile)} vs {ConsolePrompt.EscapeMarkup(destFile)}");
         AnsiConsole.MarkupLine("[grey]--- system file[/]");
         AnsiConsole.MarkupLine("[grey]+++ backup file[/]");
 
@@ -112,7 +107,7 @@ public class ConflictResolverService
         }
         catch (IOException ex)
         {
-            AnsiConsole.MarkupLine($"[red][[ConflictResolver]][/] Cannot read file for diff: {EscapeMarkup(ex.Message)}");
+            AnsiConsole.MarkupLine($"[red][[ConflictResolver]][/] Cannot read file for diff: {ConsolePrompt.EscapeMarkup(ex.Message)}");
         }
         catch (UnauthorizedAccessException)
         {
@@ -136,14 +131,14 @@ public class ConflictResolverService
 
             if (stagingLine == destLine)
             {
-                AnsiConsole.MarkupLine($"  {EscapeMarkup(stagingLine!)}");
+                AnsiConsole.MarkupLine($"  {ConsolePrompt.EscapeMarkup(stagingLine!)}");
             }
             else
             {
                 if (destLine is not null)
-                    AnsiConsole.MarkupLine($"[red]- {EscapeMarkup(destLine)}[/]");
+                    AnsiConsole.MarkupLine($"[red]- {ConsolePrompt.EscapeMarkup(destLine)}[/]");
                 if (stagingLine is not null)
-                    AnsiConsole.MarkupLine($"[green]+ {EscapeMarkup(stagingLine)}[/]");
+                    AnsiConsole.MarkupLine($"[green]+ {ConsolePrompt.EscapeMarkup(stagingLine)}[/]");
             }
         }
 
@@ -219,13 +214,13 @@ public class ConflictResolverService
             switch (op)
             {
                 case ' ':
-                    AnsiConsole.MarkupLine($"  {EscapeMarkup(line)}");
+                    AnsiConsole.MarkupLine($"  {ConsolePrompt.EscapeMarkup(line)}");
                     break;
                 case '-':
-                    AnsiConsole.MarkupLine($"[red]- {EscapeMarkup(line)}[/]");
+                    AnsiConsole.MarkupLine($"[red]- {ConsolePrompt.EscapeMarkup(line)}[/]");
                     break;
                 case '+':
-                    AnsiConsole.MarkupLine($"[green]+ {EscapeMarkup(line)}[/]");
+                    AnsiConsole.MarkupLine($"[green]+ {ConsolePrompt.EscapeMarkup(line)}[/]");
                     break;
             }
         }
@@ -276,10 +271,5 @@ public class ConflictResolverService
             BacktrackLcs(operations, a, b, lcs, i - 1, j);
             operations.Add(('-', a[i - 1]));
         }
-    }
-
-    private static string EscapeMarkup(string text)
-    {
-        return text.Replace("[", "[[").Replace("]", "]]");
     }
 }

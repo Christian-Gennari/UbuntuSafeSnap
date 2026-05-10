@@ -1,4 +1,6 @@
-namespace UbuntuSafeSnap.Services;
+using UbuntuSafeSnap.UI;
+
+namespace UbuntuSafeSnap.Services.Shared;
 
 public class TargetResolverService
 {
@@ -28,7 +30,7 @@ public class TargetResolverService
 
             if (fullPath == homeDirectory)
             {
-                Console.WriteLine($"[TargetResolverService] Skipping home directory: {fullPath}");
+                Log.Info("TargetResolverService", $"Skipping home directory: {fullPath}");
                 continue;
             }
 
@@ -45,7 +47,7 @@ public class TargetResolverService
             string? passwdEntry = GetPasswdHome(sudoUser);
             if (passwdEntry is not null)
             {
-                Console.WriteLine($"[TargetResolverService] Running under sudo for user '{sudoUser}', using home: {passwdEntry}");
+                Log.Info("TargetResolverService", $"Running under sudo for user '{sudoUser}', using home: {passwdEntry}");
                 return passwdEntry;
             }
         }
@@ -57,7 +59,7 @@ public class TargetResolverService
     {
         try
         {
-            var process = new System.Diagnostics.Process();
+            using var process = new System.Diagnostics.Process();
             process.StartInfo.FileName = "getent";
             process.StartInfo.ArgumentList.Add("passwd");
             process.StartInfo.ArgumentList.Add(userName);
