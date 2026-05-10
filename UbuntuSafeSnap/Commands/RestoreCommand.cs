@@ -14,8 +14,8 @@ public static class RestoreCommand
 
             if (!Directory.Exists(backupsPath))
             {
-                Log.Error("Restore", $"No backups directory found at {backupsPath}.");
-                Log.Error("Restore", "Run 'ubuntusafesnap backup' first to create a backup.");
+                Log.Error("RestoreCommand", $"No backups directory found at {backupsPath}.");
+                Log.Error("RestoreCommand", "Run 'ubuntusafesnap backup' first to create a backup.");
                 return 1;
             }
 
@@ -25,15 +25,15 @@ public static class RestoreCommand
 
             if (zipFiles.Length == 0)
             {
-                Log.Error("Restore", $"No backup files found in {backupsPath}.");
-                Log.Error("Restore", "Run 'ubuntusafesnap backup' first to create a backup.");
+                Log.Error("RestoreCommand", $"No backup files found in {backupsPath}.");
+                Log.Error("RestoreCommand", "Run 'ubuntusafesnap backup' first to create a backup.");
                 return 1;
             }
 
             if (zipFiles.Length == 1)
             {
                 restoreFilePath = zipFiles[0];
-                Log.Info("Restore", $"Using only available backup: {Path.GetFileName(restoreFilePath)}");
+                Log.Info("RestoreCommand", $"Using only available backup: {Path.GetFileName(restoreFilePath)}");
             }
             else
             {

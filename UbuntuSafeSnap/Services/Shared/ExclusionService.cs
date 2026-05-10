@@ -2,9 +2,9 @@ namespace UbuntuSafeSnap.Services.Shared;
 
 public class ExclusionService
 {
-    private readonly HashSet<string> _forbiddenExtensions = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _forbiddenFilenames = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _forbiddenDirectories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedExtensions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedFilenames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedDirectories = new(StringComparer.OrdinalIgnoreCase);
 
     public ExclusionService(string exclusionsFilePath)
     {
@@ -20,9 +20,9 @@ public class ExclusionService
                 filePath);
         }
 
-        _forbiddenExtensions.Clear();
-        _forbiddenFilenames.Clear();
-        _forbiddenDirectories.Clear();
+        _excludedExtensions.Clear();
+        _excludedFilenames.Clear();
+        _excludedDirectories.Clear();
 
         foreach (var rawLine in File.ReadAllLines(filePath))
         {
@@ -33,27 +33,27 @@ public class ExclusionService
 
             if (line.EndsWith('/'))
             {
-                _forbiddenDirectories.Add(line.TrimEnd('/'));
+                _excludedDirectories.Add(line.TrimEnd('/'));
             }
             else if (line.StartsWith('.'))
             {
-                _forbiddenExtensions.Add(line);
+                _excludedExtensions.Add(line);
             }
             else
             {
-                _forbiddenFilenames.Add(line);
+                _excludedFilenames.Add(line);
             }
         }
     }
 
     public bool ShouldExclude(string filePath)
     {
-        return _forbiddenExtensions.Contains(Path.GetExtension(filePath))
-            || _forbiddenFilenames.Contains(Path.GetFileName(filePath));
+        return _excludedExtensions.Contains(Path.GetExtension(filePath))
+            || _excludedFilenames.Contains(Path.GetFileName(filePath));
     }
 
     public bool ShouldExcludeDirectory(string dirPath)
     {
-        return _forbiddenDirectories.Contains(Path.GetFileName(dirPath));
+        return _excludedDirectories.Contains(Path.GetFileName(dirPath));
     }
 }

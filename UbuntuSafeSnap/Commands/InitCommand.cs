@@ -49,35 +49,35 @@ __pycache__/
         if (!File.Exists(targetsPath))
         {
             File.WriteAllText(targetsPath, DefaultTargets);
-            Log.Info("Init", $"Created {targetsPath} with default configuration.");
+            Log.Info("InitCommand", $"Created {targetsPath} with default configuration.");
             targetsCreated = true;
         }
         else
         {
-            Log.Info("Init", "targets.txt already exists — skipped.");
+            Log.Info("InitCommand", "targets.txt already exists — skipped.");
         }
 
         if (!File.Exists(exclusionsPath))
         {
             File.WriteAllText(exclusionsPath, DefaultExclusions);
-            Log.Info("Init", $"Created {exclusionsPath} with default configuration.");
+            Log.Info("InitCommand", $"Created {exclusionsPath} with default configuration.");
             exclusionsCreated = true;
         }
         else
         {
-            Log.Info("Init", "exclusions.txt already exists — skipped.");
+            Log.Info("InitCommand", "exclusions.txt already exists — skipped.");
         }
 
         if (targetsCreated || exclusionsCreated)
         {
             Console.WriteLine();
-            Log.Info("Init", "Review the created file(s) and adjust to your needs, then run:");
+            Log.Info("InitCommand", "Review the created file(s) and adjust to your needs, then run:");
             Console.WriteLine("  ubuntusafesnap backup");
         }
         else
         {
             Console.WriteLine();
-            Log.Info("Init", "All configuration files already exist. No changes made.");
+            Log.Info("InitCommand", "All configuration files already exist. No changes made.");
         }
 
         return 0;
