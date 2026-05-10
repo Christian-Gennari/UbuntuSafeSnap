@@ -10,7 +10,7 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 
 - **Package Extraction**: Captures the list of manually installed packages via `apt-mark showmanual`.
 - **Config Collection**: Recursively collects configuration files from user-defined directories.
-- **Smart Exclusion**: Automatically skips sensitive files like `.env`, `.key`, `.pem`, and `secrets.*` based on configurable rules.
+- **Smart Exclusion**: Automatically skips sensitive files like `.env`, `.key`, `.pem`, and `secrets.*` based on configurable rules. Entire directories like `node_modules/`, `.cache/`, and `.git/` can be excluded to avoid bloating backups.
 - **Symlink and Special File Handling**: Skips symlinks, broken symlinks, sockets, and pipes gracefully instead of crashing.
 - **Manifest Generation**: Records the original source directory for each file, enabling accurate restoration paths.
 - **Archive Generation**: Bundles everything into a timestamped `.zip` archive stored in `./backups/`.
@@ -24,7 +24,7 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 - **Interactive Conflict Resolution**: When a file already exists on the system and differs from the backup, an interactive menu lets you choose:
   - **Overwrite** — Replace the system file with the backup version (requires confirmation)
   - **Skip** — Keep the existing system file unchanged
-  - **View Diff** — Show a git-style inline diff comparing the two versions, then re-prompt
+  - **View Diff** — Show an inline diff comparing the two versions using DiffPlex, then re-prompt
   - **Abort Restore** — Stop the restore process immediately
 - **SHA256 Comparison**: Identical files are automatically skipped and logged as "Skipped (identical)", while user-initiated skips are logged separately.
 - **Interactive Backup Selection**: If you run restore without specifying a file, a menu lets you pick from available backups in `./backups/`.
@@ -143,12 +143,17 @@ The home directory (`~` or `/home/user`) is blocked as a target to prevent accid
 
 ### Exclusions (`exclusions.txt`)
 
-Configure which files or extensions to skip.
+Configure which files, extensions, and directories to skip.
+
+- **Extension rules** start with `.` — match any file with that extension
+- **Filename rules** are just the name — match any file with that exact name
+- **Directory rules** end with `/` — skip entire directory trees by name (e.g. `node_modules/` excludes any directory named `node_modules` anywhere in the tree)
 
 ```
 # Files matching these patterns will be excluded from backups.
 # Extension rules start with .  (e.g. .env, .key, .pem)
 # Filename rules are just the name (e.g. secrets.json)
+# Directory rules end with /  (e.g. node_modules/) to skip entire trees
 
 .env
 .key
@@ -163,6 +168,10 @@ secrets.lua
 id_rsa
 id_ed25519
 id_ecdsa
+node_modules/
+.cache/
+__pycache__/
+.git/
 ```
 
 ### Manifest (`manifest.txt`)
@@ -179,10 +188,10 @@ The application follows a service-oriented architecture using .NET Dependency In
 | **TargetResolverService** | Resolves and expands paths from `targets.txt`; blocks home directory as target; resolves `~` to real user home under `sudo` |
 | **PackageService** | Runs `apt-mark showmanual` and writes `packages.txt` to the staging directory |
 | **ConfigService** | Recursively collects config files from target directories, applies exclusions, skips symlinks and special files, writes `manifest.txt` |
-| **ExclusionService** | Evaluates files against extension and filename rules in `exclusions.txt` |
+| **ExclusionService** | Evaluates files against extension, filename, and directory rules in `exclusions.txt`; directories ending in `/` skip entire subtrees |
 | **ArchiveService** | Creates `.zip` archives in `./backups/`, cleans up `./staging/`, and prunes old backups beyond the `--keep` limit |
 | **RestoreService** | Extracts archives, reinstalls packages, restores files using `manifest.txt` paths |
-| **ConflictResolverService** | Compares SHA256 hashes of conflicting files and provides an interactive Spectre.Console menu for resolution |
+| **ConflictResolverService** | Compares SHA256 hashes of conflicting files and provides an interactive Spectre.Console menu for resolution; inline diffs powered by DiffPlex |
 
 ## Development
 

@@ -166,6 +166,13 @@ public class ConfigService(ExclusionService exclusionService)
                     continue;
                 }
 
+                if (_exclusionService.ShouldExcludeDirectory(subDir))
+                {
+                    Log.Info("ConfigService", $"Excluded directory: {subDir}");
+                    totalExcluded++;
+                    continue;
+                }
+
                 directories.Enqueue(subDir);
             }
         }
