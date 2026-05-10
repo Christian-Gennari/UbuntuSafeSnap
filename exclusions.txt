@@ -1,0 +1,23 @@
+# Files matching these patterns will be excluded from backups.
+# Extension rules start with .  (e.g. .env, .key, .pem)
+# Filename rules are just the name (e.g. secrets.json)
+# Directory rules end with /  (e.g. node_modules/) to skip entire trees
+# Lines starting with # are comments and will be ignored.
+
+.env
+.key
+.pem
+.log
+.lock
+.pid
+.db
+.sqlite
+secrets.json
+secrets.lua
+id_rsa
+id_ed25519
+id_ecdsa
+node_modules/
+.cache/
+__pycache__/
+.git/

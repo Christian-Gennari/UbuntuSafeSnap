@@ -4,6 +4,7 @@ public class ExclusionService
 {
     private readonly HashSet<string> _forbiddenExtensions = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _forbiddenFilenames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _forbiddenDirectories = new(StringComparer.OrdinalIgnoreCase);
 
     public ExclusionService(string exclusionsFilePath)
     {
@@ -21,6 +22,7 @@ public class ExclusionService
 
         _forbiddenExtensions.Clear();
         _forbiddenFilenames.Clear();
+        _forbiddenDirectories.Clear();
 
         foreach (var rawLine in File.ReadAllLines(filePath))
         {
@@ -29,7 +31,11 @@ public class ExclusionService
             if (string.IsNullOrEmpty(line) || line.StartsWith('#'))
                 continue;
 
-            if (line.StartsWith('.'))
+            if (line.EndsWith('/'))
+            {
+                _forbiddenDirectories.Add(line.TrimEnd('/'));
+            }
+            else if (line.StartsWith('.'))
             {
                 _forbiddenExtensions.Add(line);
             }
@@ -44,5 +50,10 @@ public class ExclusionService
     {
         return _forbiddenExtensions.Contains(Path.GetExtension(filePath))
             || _forbiddenFilenames.Contains(Path.GetFileName(filePath));
+    }
+
+    public bool ShouldExcludeDirectory(string dirPath)
+    {
+        return _forbiddenDirectories.Contains(Path.GetFileName(dirPath));
     }
 }
