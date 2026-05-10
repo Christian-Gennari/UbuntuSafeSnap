@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using DiffPlex.DiffBuilder;
+using DiffPlex.DiffBuilder.Model;
 using Spectre.Console;
 using UbuntuSafeSnap.Models;
 using UbuntuSafeSnap.UI;
@@ -100,10 +102,32 @@ public class ConflictResolverService
                 return;
             }
 
-            string[] stagingLines = File.ReadAllLines(stagingFile);
-            string[] destLines = File.ReadAllLines(destFile);
+            string destText = File.ReadAllText(destFile);
+            string stagingText = File.ReadAllText(stagingFile);
 
-            ShowLcsDiff(destLines, stagingLines);
+            var diff = InlineDiffBuilder.Diff(destText, stagingText, ignoreWhiteSpace: false);
+
+            foreach (var line in diff.Lines)
+            {
+                if (line.Type == ChangeType.Imaginary)
+                    continue;
+
+                switch (line.Type)
+                {
+                    case ChangeType.Inserted:
+                        AnsiConsole.MarkupLine($"[green]+ {ConsolePrompt.EscapeMarkup(line.Text)}[/]");
+                        break;
+                    case ChangeType.Deleted:
+                        AnsiConsole.MarkupLine($"[red]- {ConsolePrompt.EscapeMarkup(line.Text)}[/]");
+                        break;
+                    case ChangeType.Modified:
+                        AnsiConsole.MarkupLine($"[yellow]~ {ConsolePrompt.EscapeMarkup(line.Text)}[/]");
+                        break;
+                    default:
+                        AnsiConsole.MarkupLine($"  {ConsolePrompt.EscapeMarkup(line.Text)}");
+                        break;
+                }
+            }
         }
         catch (IOException ex)
         {
@@ -162,114 +186,5 @@ public class ConflictResolverService
         }
 
         return lines.ToArray();
-    }
-
-    private static void ShowLcsDiff(string[] destLines, string[] stagingLines)
-    {
-        int[,] lcs = ComputeLcsTable(destLines, stagingLines);
-        var operations = new List<(char op, string line)>();
-
-        BacktrackLcs(operations, destLines, stagingLines, lcs, destLines.Length, stagingLines.Length);
-
-        operations.Reverse();
-
-        int contextLines = 3;
-        int consecutiveContext = 0;
-        bool inChangeBlock = false;
-
-        for (int i = 0; i < operations.Count; i++)
-        {
-            var (op, line) = operations[i];
-
-            if (op == ' ')
-            {
-                consecutiveContext++;
-            }
-            else
-            {
-                consecutiveContext = 0;
-                inChangeBlock = true;
-            }
-
-            if (consecutiveContext > contextLines && i + 1 < operations.Count)
-            {
-                bool upcomingChange = false;
-                for (int j = i + 1; j < operations.Count && j <= i + contextLines; j++)
-                {
-                    if (operations[j].op != ' ')
-                    {
-                        upcomingChange = true;
-                        break;
-                    }
-                }
-
-                if (!upcomingChange && inChangeBlock)
-                {
-                    AnsiConsole.MarkupLine("[grey]...[/]");
-                    inChangeBlock = false;
-                    continue;
-                }
-            }
-
-            switch (op)
-            {
-                case ' ':
-                    AnsiConsole.MarkupLine($"  {ConsolePrompt.EscapeMarkup(line)}");
-                    break;
-                case '-':
-                    AnsiConsole.MarkupLine($"[red]- {ConsolePrompt.EscapeMarkup(line)}[/]");
-                    break;
-                case '+':
-                    AnsiConsole.MarkupLine($"[green]+ {ConsolePrompt.EscapeMarkup(line)}[/]");
-                    break;
-            }
-        }
-    }
-
-    private static int[,] ComputeLcsTable(string[] a, string[] b)
-    {
-        int m = a.Length;
-        int n = b.Length;
-        var lcs = new int[m + 1, n + 1];
-
-        for (int i = 1; i <= m; i++)
-        {
-            for (int j = 1; j <= n; j++)
-            {
-                if (a[i - 1] == b[j - 1])
-                {
-                    lcs[i, j] = lcs[i - 1, j - 1] + 1;
-                }
-                else
-                {
-                    lcs[i, j] = Math.Max(lcs[i - 1, j], lcs[i, j - 1]);
-                }
-            }
-        }
-
-        return lcs;
-    }
-
-    private static void BacktrackLcs(List<(char op, string line)> operations, string[] a, string[] b, int[,] lcs, int i, int j)
-    {
-        if (i > 0 && j > 0 && a[i - 1] == b[j - 1])
-        {
-            BacktrackLcs(operations, a, b, lcs, i - 1, j - 1);
-            operations.Add((' ', a[i - 1]));
-            return;
-        }
-
-        if (j > 0 && (i == 0 || lcs[i, j - 1] >= lcs[i - 1, j]))
-        {
-            BacktrackLcs(operations, a, b, lcs, i, j - 1);
-            operations.Add(('+', b[j - 1]));
-            return;
-        }
-
-        if (i > 0 && (j == 0 || lcs[i, j - 1] < lcs[i - 1, j]))
-        {
-            BacktrackLcs(operations, a, b, lcs, i - 1, j);
-            operations.Add(('-', a[i - 1]));
-        }
     }
 }
