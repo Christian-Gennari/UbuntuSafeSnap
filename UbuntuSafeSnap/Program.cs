@@ -33,8 +33,8 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
 {
     if (Environment.UserName == "root" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUDO_USER")))
     {
-        Log.Info("Backup", "Warning: Running backup as root without sudo. Home directory targets will resolve to /root.");
-        Log.Info("Backup", "Consider running without sudo: UbuntuSafeSnap backup");
+        Log.Info("BackupCommand", "Warning: Running backup as root without sudo. Home directory targets will resolve to /root.");
+        Log.Info("BackupCommand", "Consider running without sudo: UbuntuSafeSnap backup");
     }
 
     string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
@@ -42,15 +42,15 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
 
     if (!File.Exists(targetsPath))
     {
-        Log.Error("Backup", $"{TargetsFile} not found in current directory.");
-        Log.Error("Backup", "Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
+        Log.Error("BackupCommand", $"{TargetsFile} not found in current directory.");
+        Log.Error("BackupCommand", "Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
         return 1;
     }
 
     if (!File.Exists(exclusionsPath))
     {
-        Log.Error("Backup", $"{ExclusionsFile} not found in current directory.");
-        Log.Error("Backup", "Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
+        Log.Error("BackupCommand", $"{ExclusionsFile} not found in current directory.");
+        Log.Error("BackupCommand", "Run UbuntuSafeSnap from its home directory containing targets.txt and exclusions.txt.");
         return 1;
     }
 

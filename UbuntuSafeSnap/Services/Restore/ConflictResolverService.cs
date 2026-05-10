@@ -31,8 +31,8 @@ public class ConflictResolverService
 
         if (!ConsolePrompt.IsInteractive)
         {
-            Console.Error.WriteLine($"[ConflictResolver] Conflict requires user input: {destFile}");
-            Console.Error.WriteLine("[ConflictResolver] Re-run in an interactive terminal to resolve.");
+            Log.Error("ConflictResolverService", $"Conflict requires user input: {destFile}");
+            Log.Error("ConflictResolverService", "Re-run in an interactive terminal to resolve.");
             return ConflictResolution.Abort;
         }
 
