@@ -9,10 +9,13 @@ public class CollectorService(ExclusionService exclusionService)
 
     public async Task CollectFilesAsync(
         IEnumerable<string> sourceDirectories,
-        string stagingDirectory
+        string stagingDirectory,
+        string exclusionsFile
     )
     {
         ArgumentNullException.ThrowIfNull(sourceDirectories);
+
+        _exclusionService.Load(exclusionsFile);
 
         if (string.IsNullOrWhiteSpace(stagingDirectory))
         {
