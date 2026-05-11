@@ -5,10 +5,20 @@ using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Restore;
 
+/// <summary>
+/// Orchestrates the full restore process: archive extraction, package reinstallation,
+/// file restoration with conflict resolution, and temporary directory cleanup.
+/// </summary>
 public class RestoreService(ConflictResolverService conflictResolver)
 {
     private readonly ConflictResolverService _conflictResolver = conflictResolver;
 
+    /// <summary>
+    /// Validates root access, extracts the archive, reinstalls packages, restores files,
+    /// and cleans up the temporary staging directory in a finally block.
+    /// </summary>
+    /// <param name="archivePath">Path to the backup zip archive.</param>
+    /// <returns>Exit code (0 = success, 1 = failure).</returns>
     public async Task<int> RestoreAsync(string archivePath)
     {
         ArgumentNullException.ThrowIfNull(archivePath);
@@ -80,6 +90,11 @@ public class RestoreService(ConflictResolverService conflictResolver)
         }
     }
 
+    /// <summary>
+    /// Reads packages.txt from the staging directory and reinstalls all listed packages via apt.
+    /// </summary>
+    /// <param name="stagingDirectory">The extracted archive directory.</param>
+    /// <returns>Exit code from apt (0 = success), or 0 if no packages.txt found.</returns>
     private static async Task<int> ReinstallPackagesAsync(string stagingDirectory)
     {
         string packagesFile = Path.Combine(stagingDirectory, "packages.txt");
@@ -130,6 +145,12 @@ public class RestoreService(ConflictResolverService conflictResolver)
         return 0;
     }
 
+    /// <summary>
+    /// BFS traversal of the staging directory, restoring each file to its original location
+    /// using the manifest. Delegates to ConflictResolverService when a destination file exists.
+    /// </summary>
+    /// <param name="stagingDirectory">The extracted archive directory.</param>
+    /// <returns>Counts of restored/skipped files and whether the restore was aborted.</returns>
     private async Task<(int restored, int skipped, bool aborted)> RestoreFilesAsync(string stagingDirectory)
     {
         int restored = 0;
@@ -242,6 +263,12 @@ public class RestoreService(ConflictResolverService conflictResolver)
         return (restored, skipped, aborted: false);
     }
 
+    /// <summary>
+    /// Parses manifest.txt (format: sourceDir|relativePath) into a lookup dictionary
+    /// that maps relative paths back to their original source directories.
+    /// </summary>
+    /// <param name="stagingDirectory">The extracted archive directory.</param>
+    /// <returns>Dictionary of relative path to source directory.</returns>
     private static Dictionary<string, string> LoadManifest(string stagingDirectory)
     {
         var manifest = new Dictionary<string, string>();
