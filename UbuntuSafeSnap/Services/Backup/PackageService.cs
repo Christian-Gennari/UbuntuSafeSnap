@@ -3,8 +3,18 @@ using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Backup;
 
+/// <summary>
+/// Captures the list of manually installed packages via apt-mark showmanual
+/// and writes them to packages.txt for later reinstallation during restore.
+/// </summary>
 public class PackageService
 {
+    /// <summary>
+    /// Runs apt-mark showmanual and writes the output to packages.txt in the staging directory.
+    /// These packages can be reinstalled during restore via apt install.
+    /// </summary>
+    /// <param name="stagingDirectory">Directory to write packages.txt into.</param>
+    /// <exception cref="InvalidOperationException">Thrown when apt-mark fails.</exception>
     public async Task ExtractPackageListAsync(string stagingDirectory)
     {
         ArgumentNullException.ThrowIfNull(stagingDirectory);
