@@ -2,8 +2,18 @@ using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Shared;
 
+/// <summary>
+/// Resolves target entries from targets.txt into absolute filesystem paths.
+/// Handles ~ expansion, sudo-aware home directory detection, and skips the home directory itself.
+/// </summary>
 public class TargetResolverService
 {
+    /// <summary>
+    /// Reads targets.txt, expands ~ to the real user's home directory (sudo-aware),
+    /// resolves full paths, and skips entries that resolve to the home directory itself.
+    /// </summary>
+    /// <param name="filePath">Path to the targets.txt file.</param>
+    /// <returns>Resolved absolute directory paths to back up.</returns>
     public IEnumerable<string> Resolve(string filePath)
     {
         if (!File.Exists(filePath))
@@ -38,6 +48,10 @@ public class TargetResolverService
         }
     }
 
+    /// <summary>
+    /// Detects the original user's home directory when running under sudo
+    /// (via SUDO_USER + getent), falling back to Environment.SpecialFolder.UserProfile.
+    /// </summary>
     private static string GetRealUserHome()
     {
         string? sudoUser = Environment.GetEnvironmentVariable("SUDO_USER");
@@ -55,6 +69,7 @@ public class TargetResolverService
         return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     }
 
+    /// <summary>Looks up a user's home directory from /etc/passwd via getent.</summary>
     private static string? GetPasswdHome(string userName)
     {
         try
