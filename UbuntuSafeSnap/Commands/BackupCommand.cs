@@ -15,7 +15,7 @@ public static class BackupCommand
 
         var services = new ServiceCollection()
             .AddSingleton<TargetResolverService>()
-            .AddSingleton(_ => new ExclusionService(exclusionsFile))
+            .AddSingleton<ExclusionService>()
             .AddSingleton<PackageService>()
             .AddSingleton<CollectorService>()
             .AddSingleton<ArchiveService>()
@@ -28,7 +28,7 @@ public static class BackupCommand
         await packageService.ExtractPackageListAsync(stagingDirectory);
         var collectorService = services.GetRequiredService<CollectorService>();
 
-        await collectorService.CollectFilesAsync(targetDirectories, stagingDirectory);
+        await collectorService.CollectFilesAsync(targetDirectories, stagingDirectory, exclusionsFile);
 
         string backupsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "backups");
         string archivePath = Path.Combine(

@@ -6,10 +6,7 @@ public class ExclusionService
     private readonly HashSet<string> _excludedFilenames = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _excludedDirectories = new(StringComparer.OrdinalIgnoreCase);
 
-    public ExclusionService(string exclusionsFilePath)
-    {
-        Load(exclusionsFilePath);
-    }
+    public ExclusionService() { }
 
     public void Load(string filePath)
     {
