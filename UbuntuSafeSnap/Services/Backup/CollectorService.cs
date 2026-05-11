@@ -9,7 +9,6 @@ namespace UbuntuSafeSnap.Services.Backup;
 /// </summary>
 public class CollectorService(ExclusionService exclusionService)
 {
-    private readonly ExclusionService _exclusionService = exclusionService;
 
     /// <summary>
     /// Entry point for file collection. Loads exclusions, iterates source directories
@@ -27,7 +26,7 @@ public class CollectorService(ExclusionService exclusionService)
     {
         ArgumentNullException.ThrowIfNull(sourceDirectories);
 
-        _exclusionService.Load(exclusionsFile);
+        exclusionService.Load(exclusionsFile);
 
         if (string.IsNullOrWhiteSpace(stagingDirectory))
         {
@@ -51,7 +50,7 @@ public class CollectorService(ExclusionService exclusionService)
         {
             if (File.Exists(sourceDir))
             {
-                if (_exclusionService.ShouldExclude(sourceDir))
+                if (exclusionService.ShouldExclude(sourceDir))
                 {
                     Log.Info("CollectorService", $"Excluded file: {sourceDir}");
                     continue;
@@ -127,7 +126,7 @@ public class CollectorService(ExclusionService exclusionService)
 
             foreach (var file in files)
             {
-                if (_exclusionService.ShouldExclude(file))
+                if (exclusionService.ShouldExclude(file))
                 {
                     totalExcluded++;
                     continue;
@@ -186,7 +185,7 @@ public class CollectorService(ExclusionService exclusionService)
                     continue;
                 }
 
-                if (_exclusionService.ShouldExcludeDirectory(subDir))
+                if (exclusionService.ShouldExcludeDirectory(subDir))
                 {
                     Log.Info("CollectorService", $"Excluded directory: {subDir}");
                     totalExcluded++;
