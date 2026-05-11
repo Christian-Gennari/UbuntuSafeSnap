@@ -7,10 +7,22 @@ using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Restore;
 
+/// <summary>
+/// Handles interactive conflict resolution when restoring files that already exist on disk.
+/// Compares SHA256 hashes, shows diffs via DiffPlex, and prompts the user for action.
+/// </summary>
 public class ConflictResolverService
 {
+    /// <summary>Files larger than this threshold (1 MB) use a partial diff instead of a full inline diff.</summary>
     private const long MaxDiffFileSize = 1 * 1024 * 1024;
 
+    /// <summary>
+    /// Entry point for conflict resolution. Compares hashes; if identical returns Identical immediately.
+    /// Otherwise enters the interactive prompt loop.
+    /// </summary>
+    /// <param name="stagingFile">Path to the file from the backup archive.</param>
+    /// <param name="destFile">Path to the existing file on disk.</param>
+    /// <returns>The user's chosen conflict resolution action.</returns>
     public Task<ConflictResolution> ResolveAsync(string stagingFile, string destFile)
     {
         ArgumentNullException.ThrowIfNull(stagingFile);
@@ -19,6 +31,10 @@ public class ConflictResolverService
         return ResolveCoreAsync(stagingFile, destFile);
     }
 
+    /// <summary>
+    /// Core resolution logic: hash comparison, non-interactive fallback, and the interactive
+    /// prompt loop offering Overwrite, Skip, View Diff, or Abort Restore.
+    /// </summary>
     private async Task<ConflictResolution> ResolveCoreAsync(string stagingFile, string destFile)
     {
         string stagingHash = await ComputeSha256Async(stagingFile);
@@ -74,6 +90,7 @@ public class ConflictResolverService
         }
     }
 
+    /// <summary>Computes the SHA256 hash of a file and returns it as a hex string.</summary>
     private static async Task<string> ComputeSha256Async(string filePath)
     {
         using var stream = File.OpenRead(filePath);
@@ -81,6 +98,10 @@ public class ConflictResolverService
         return Convert.ToHexString(hash);
     }
 
+    /// <summary>
+    /// Shows a full inline diff between the staging and destination files using DiffPlex.
+    /// Falls back to a partial diff (first 50 lines) if either file exceeds MaxDiffFileSize.
+    /// </summary>
     private static void ShowDiff(string stagingFile, string destFile)
     {
         AnsiConsole.WriteLine();
@@ -140,6 +161,7 @@ public class ConflictResolverService
         AnsiConsole.WriteLine();
     }
 
+    /// <summary>Shows a line-by-line side-by-side comparison of the first maxLines from each file.</summary>
     private static void ShowPartialDiff(string stagingFile, string destFile, int maxLines)
     {
         string[] stagingLines = ReadFirstLines(stagingFile, maxLines);
@@ -171,6 +193,7 @@ public class ConflictResolverService
         }
     }
 
+    /// <summary>Reads up to maxLines from a file without loading the entire file into memory.</summary>
     private static string[] ReadFirstLines(string filePath, int maxLines)
     {
         var lines = new List<string>(maxLines);

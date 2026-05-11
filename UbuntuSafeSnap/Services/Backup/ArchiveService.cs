@@ -4,6 +4,10 @@ using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Backup;
 
+/// <summary>
+/// Manages backup archive creation, Linux permission handling on output directories,
+/// and retention-based pruning of old backups.
+/// </summary>
 public class ArchiveService
 {
     private const UnixFileMode DirectoryPermissions =
@@ -11,6 +15,12 @@ public class ArchiveService
         UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
         UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
 
+    /// <summary>
+    /// Creates a zip archive from the staging directory, sets Linux permissions on the
+    /// output directory, then cleans up the staging directory.
+    /// </summary>
+    /// <param name="stagingDirectory">Directory containing collected files to archive.</param>
+    /// <param name="outputPath">Destination path for the .zip file.</param>
     public void CreateArchive(string stagingDirectory, string outputPath)
     {
         ArgumentNullException.ThrowIfNull(stagingDirectory);
@@ -47,6 +57,12 @@ public class ArchiveService
         Log.Info("ArchiveService", "Staging directory removed.");
     }
 
+    /// <summary>
+    /// Removes oldest backup archives beyond the specified keepCount.
+    /// Archives are sorted by name descending (reverse alphabetical = newest first).
+    /// </summary>
+    /// <param name="backupsDirectory">Directory containing backup .zip files.</param>
+    /// <param name="keepCount">Number of most recent backups to retain.</param>
     public void PruneOldArchives(string backupsDirectory, int keepCount)
     {
         ArgumentNullException.ThrowIfNull(backupsDirectory);
@@ -86,6 +102,8 @@ public class ArchiveService
         Log.Info("ArchiveService", $"Pruned {pruned} backup(s), kept {keepCount} most recent.");
     }
 
+    /// <summary>Sets Unix permissions to 755 (rwxr-xr-x) on the directory if running on Linux.</summary>
+    /// <param name="directoryPath">Directory to make writable.</param>
     private static void EnsureWritableDirectory(string directoryPath)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

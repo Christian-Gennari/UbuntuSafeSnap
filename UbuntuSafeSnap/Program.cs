@@ -2,7 +2,9 @@
 using UbuntuSafeSnap.Commands;
 using UbuntuSafeSnap.UI;
 
+/// <summary>Default filename for the target directories configuration file.</summary>
 const string TargetsFile = "targets.txt";
+/// <summary>Default filename for the file/directory exclusion rules configuration file.</summary>
 const string ExclusionsFile = "exclusions.txt";
 
 var restoreFileArgument = new Argument<string?>("file")
@@ -31,6 +33,8 @@ rootCommand.Subcommands.Add(restoreCommand);
 
 backupCommand.SetAction(async (ParseResult parseResult) =>
 {
+    // When running as root without sudo (e.g. sudo su), $HOME resolves to /root
+    // instead of the original user's home, which may be unexpected.
     if (Environment.UserName == "root" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUDO_USER")))
     {
         Log.Info("BackupCommand", "Warning: Running backup as root without sudo. Home directory targets will resolve to /root.");

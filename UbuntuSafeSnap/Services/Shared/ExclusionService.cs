@@ -1,5 +1,10 @@
 namespace UbuntuSafeSnap.Services.Shared;
 
+/// <summary>
+/// Loads exclusion rules from a configuration file and evaluates whether files or
+/// directories should be excluded from backup based on extension, filename, or
+/// directory name matching (case-insensitive).
+/// </summary>
 public class ExclusionService
 {
     private readonly HashSet<string> _excludedExtensions = new(StringComparer.OrdinalIgnoreCase);
@@ -8,6 +13,13 @@ public class ExclusionService
 
     public ExclusionService() { }
 
+    /// <summary>
+    /// Parses the exclusion file. Lines ending with / are directory rules,
+    /// lines starting with . are extension rules, everything else is a filename rule.
+    /// Lines starting with # and blank lines are ignored.
+    /// </summary>
+    /// <param name="filePath">Path to the exclusions configuration file.</param>
+    /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
     public void Load(string filePath)
     {
         if (!File.Exists(filePath))
@@ -43,12 +55,14 @@ public class ExclusionService
         }
     }
 
+    /// <summary>Returns true if the file's extension or filename matches any exclusion rule.</summary>
     public bool ShouldExclude(string filePath)
     {
         return _excludedExtensions.Contains(Path.GetExtension(filePath))
             || _excludedFilenames.Contains(Path.GetFileName(filePath));
     }
 
+    /// <summary>Returns true if the directory name matches any directory exclusion rule.</summary>
     public bool ShouldExcludeDirectory(string dirPath)
     {
         return _excludedDirectories.Contains(Path.GetFileName(dirPath));

@@ -3,10 +3,22 @@ using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Backup;
 
+/// <summary>
+/// Core file collection engine for backups. Iterates source directories, applies exclusion
+/// rules, copies files to a staging directory, and writes a manifest for later restore.
+/// </summary>
 public class CollectorService(ExclusionService exclusionService)
 {
     private readonly ExclusionService _exclusionService = exclusionService;
 
+    /// <summary>
+    /// Entry point for file collection. Loads exclusions, iterates source directories
+    /// (handling both individual files and directories), copies files to staging, and
+    /// writes manifest.txt mapping relative paths to their original source directories.
+    /// </summary>
+    /// <param name="sourceDirectories">Paths to files or directories to back up.</param>
+    /// <param name="stagingDirectory">Temporary directory to collect files into.</param>
+    /// <param name="exclusionsFile">Path to the exclusions configuration file.</param>
     public async Task CollectFilesAsync(
         IEnumerable<string> sourceDirectories,
         string stagingDirectory,
@@ -76,6 +88,11 @@ public class CollectorService(ExclusionService exclusionService)
         Log.Info("CollectorService", $"Manifest written: {manifestPath} ({manifestEntries.Count} entries)");
     }
 
+    /// <summary>
+    /// BFS traversal of a directory tree. For each directory, enumerates files and
+    /// subdirectories, applies exclusion rules, skips symlinks, handles I/O exceptions,
+    /// and tracks copied/excluded file counts.
+    /// </summary>
     private void CollectFromDirectory(string sourceDir, string stagingDirectory, List<string> manifestEntries)
     {
         var directories = new Queue<string>();
@@ -183,6 +200,7 @@ public class CollectorService(ExclusionService exclusionService)
         Log.Info("CollectorService", $"Total: {totalCopied} file(s) copied, {totalExcluded} excluded.");
     }
 
+    /// <summary>Copies a single file to the staging directory with error handling for access, I/O, and missing file issues.</summary>
     private static void CopyFileToStaging(string sourceFile, string destPath)
     {
         string? destDir = Path.GetDirectoryName(destPath);
