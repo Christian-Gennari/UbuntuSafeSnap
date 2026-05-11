@@ -11,7 +11,6 @@ namespace UbuntuSafeSnap.Services.Restore;
 /// </summary>
 public class RestoreService(ConflictResolverService conflictResolver)
 {
-    private readonly ConflictResolverService _conflictResolver = conflictResolver;
 
     /// <summary>
     /// Validates root access, extracts the archive, reinstalls packages, restores files,
@@ -203,7 +202,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
                 if (File.Exists(destPath))
                 {
-                    var resolution = await _conflictResolver.ResolveAsync(file, destPath);
+                    var resolution = await conflictResolver.ResolveAsync(file, destPath);
 
                     switch (resolution)
                     {
