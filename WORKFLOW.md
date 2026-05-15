@@ -33,11 +33,4 @@ Format: `<type>[optional scope]: <description>`
 | ci       | CI configuration files and scripts                 | ci: add GitHub Actions workflow            |
 | chore    | Other changes not modifying src or test files     | chore: update .gitignore                   |
 
-## Assignment Requirements Checklist
 
-- [x] Minimum 5 issues created, used, and closed via PRs
-- [x] Minimum 15 meaningful commits
-- [x] Each issue has: title, description, type label
-- [x] Each PR has: descriptive title and body
-- [x] All changes via branches and PRs (zero direct pushes to main)
-- [x] Main branch named `main`
