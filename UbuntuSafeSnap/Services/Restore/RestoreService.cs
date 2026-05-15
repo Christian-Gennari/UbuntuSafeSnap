@@ -1,32 +1,30 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using UbuntuSafeSnap.Models;
 using UbuntuSafeSnap.Services.Shared;
 using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Restore;
 
-/// <summary>
-/// Orchestrates the full restore process: archive extraction, package reinstallation,
-/// file restoration with conflict resolution, and temporary directory cleanup.
-/// </summary>
 public class RestoreService(ConflictResolverService conflictResolver)
 {
 
-    /// <summary>
-    /// Validates root access, extracts the archive, reinstalls packages, restores files,
-    /// and cleans up the temporary staging directory in a finally block.
-    /// </summary>
-    /// <param name="archivePath">Path to the backup zip archive.</param>
-    /// <returns>Exit code (0 = success, 1 = failure).</returns>
-    public async Task<int> RestoreAsync(string archivePath)
+    public async Task<int> RestoreAsync(string archivePath, bool dryRun = false)
     {
         ArgumentNullException.ThrowIfNull(archivePath);
 
         if (Environment.UserName != "root")
         {
-            Log.Error("RestoreService", "Run this command with sudo.");
-            return 1;
+            if (dryRun)
+            {
+                Log.Info("RestoreService", "Running in dry-run mode. Root not required (read-only).");
+            }
+            else
+            {
+                Log.Error("RestoreService", "Run this command with sudo.");
+                return 1;
+            }
         }
 
         if (!File.Exists(archivePath))
@@ -61,22 +59,32 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
             Log.Info("RestoreService", "Archive extracted successfully.");
 
-            int packageResult = await ReinstallPackagesAsync(stagingDirectory);
-            if (packageResult != 0)
+            var pkgResult = await ReinstallPackagesAsync(stagingDirectory, dryRun);
+            if (!dryRun && pkgResult.ExitCode != 0)
             {
                 Log.Error("RestoreService", "Package re-installation failed. Aborting restore.");
-                return packageResult;
+                return pkgResult.ExitCode;
             }
 
-            var (restored, skipped, aborted) = await RestoreFilesAsync(stagingDirectory);
+            var fileResult = await RestoreFilesAsync(stagingDirectory, dryRun);
 
-            if (aborted)
+            if (!dryRun && fileResult.Aborted)
             {
-                Log.Error("RestoreService", $"Restore aborted. {restored} file(s) restored, {skipped} file(s) skipped before abort.");
+                Log.Error("RestoreService", $"Restore aborted. {fileResult.Restored} file(s) restored, {fileResult.Skipped} file(s) skipped before abort.");
                 return 1;
             }
 
-            Log.Info("RestoreService", $"Restore complete. {restored} file(s) restored. {skipped} file(s) skipped.");
+            if (dryRun)
+            {
+                Log.Info("RestoreService", "=== Dry-Run Summary ===");
+                Log.Info("RestoreService", $"Packages: {pkgResult.AlreadyInstalled} already installed, {pkgResult.WouldInstall} would install");
+                Log.Info("RestoreService", $"Files: {fileResult.NewFiles} new, {fileResult.IdenticalFiles} identical, {fileResult.ConflictingFiles} conflicting");
+                Log.Info("RestoreService", "No changes were made to the system.");
+            }
+            else
+            {
+                Log.Info("RestoreService", $"Restore complete. {fileResult.Restored} file(s) restored. {fileResult.Skipped} file(s) skipped.");
+            }
 
             return 0;
         }
@@ -90,19 +98,14 @@ public class RestoreService(ConflictResolverService conflictResolver)
         }
     }
 
-    /// <summary>
-    /// Reads packages.txt from the staging directory and reinstalls all listed packages via apt.
-    /// </summary>
-    /// <param name="stagingDirectory">The extracted archive directory.</param>
-    /// <returns>Exit code from apt (0 = success), or 0 if no packages.txt found.</returns>
-    private static async Task<int> ReinstallPackagesAsync(string stagingDirectory)
+    private static async Task<PackageRestoreResult> ReinstallPackagesAsync(string stagingDirectory, bool dryRun)
     {
         string packagesFile = Path.Combine(stagingDirectory, "packages.txt");
 
         if (!File.Exists(packagesFile))
         {
             Log.Info("RestoreService", "No packages.txt found in archive. Skipping package re-installation.");
-            return 0;
+            return new PackageRestoreResult(0, 0, 0);
         }
 
         string[] packages = await File.ReadAllLinesAsync(packagesFile);
@@ -115,7 +118,43 @@ public class RestoreService(ConflictResolverService conflictResolver)
         if (packages.Length == 0)
         {
             Log.Info("RestoreService", "packages.txt is empty. No packages to reinstall.");
-            return 0;
+            return new PackageRestoreResult(0, 0, 0);
+        }
+
+        if (dryRun)
+        {
+            var installedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            using (var dpkgProcess = new Process())
+            {
+                dpkgProcess.StartInfo.FileName = "dpkg";
+                dpkgProcess.StartInfo.ArgumentList.Add("--get-selections");
+                dpkgProcess.StartInfo.UseShellExecute = false;
+                dpkgProcess.StartInfo.RedirectStandardOutput = true;
+
+                dpkgProcess.Start();
+                string output = await dpkgProcess.StandardOutput.ReadToEndAsync();
+                await dpkgProcess.WaitForExitAsync();
+
+                if (dpkgProcess.ExitCode != 0)
+                {
+                    Log.Info("RestoreService", $"dpkg --get-selections returned exit code {dpkgProcess.ExitCode}. Assuming all packages would install.");
+                    return new PackageRestoreResult(0, packages.Length, 0);
+                }
+
+                foreach (var line in output.Split('\n'))
+                {
+                    var parts = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2 && parts[1] == "install")
+                        installedPackages.Add(parts[0]);
+                }
+            }
+
+            int alreadyInstalled = packages.Count(p => installedPackages.Contains(p));
+            int wouldInstall = packages.Length - alreadyInstalled;
+
+            Log.Info("RestoreService", $"Packages to check: {packages.Length}. {alreadyInstalled} already installed, {wouldInstall} would install.");
+            return new PackageRestoreResult(alreadyInstalled, wouldInstall, 0);
         }
 
         Log.Info("RestoreService", $"Re-installing {packages.Length} package(s)...");
@@ -138,24 +177,15 @@ public class RestoreService(ConflictResolverService conflictResolver)
         if (process.ExitCode != 0)
         {
             Log.Error("RestoreService", $"apt install failed with exit code {process.ExitCode}.");
-            return process.ExitCode;
+            return new PackageRestoreResult(0, 0, process.ExitCode);
         }
 
         Log.Info("RestoreService", "Package re-installation complete.");
-        return 0;
+        return new PackageRestoreResult(0, 0, 0);
     }
 
-    /// <summary>
-    /// BFS traversal of the staging directory, restoring each file to its original location
-    /// using the manifest. Delegates to ConflictResolverService when a destination file exists.
-    /// </summary>
-    /// <param name="stagingDirectory">The extracted archive directory.</param>
-    /// <returns>Counts of restored/skipped files and whether the restore was aborted.</returns>
-    private async Task<(int restored, int skipped, bool aborted)> RestoreFilesAsync(string stagingDirectory)
+    private async Task<FileRestoreResult> RestoreFilesAsync(string stagingDirectory, bool dryRun)
     {
-        int restored = 0;
-        int skipped = 0;
-
         var manifest = LoadManifest(stagingDirectory);
 
         string? oldHome = DetectOldHome(manifest);
@@ -164,6 +194,112 @@ public class RestoreService(ConflictResolverService conflictResolver)
         if (oldHome != null && oldHome != newHome)
             Log.Info("RestoreService", $"Remapping home directory: {oldHome} → {newHome}");
 
+        if (dryRun)
+        {
+            int newFiles = 0, identicalFiles = 0, conflictingFiles = 0;
+
+            foreach (var (file, destPath) in EnumerateRestoreFiles(stagingDirectory, manifest, oldHome, newHome))
+            {
+                if (File.Exists(destPath))
+                {
+                    try
+                    {
+                        string stagingHash = await ComputeSha256Async(file);
+                        string destHash = await ComputeSha256Async(destPath);
+                        if (stagingHash == destHash)
+                        {
+                            Log.Info("RestoreService", $"[Dry-run] Identical: {destPath}");
+                            identicalFiles++;
+                        }
+                        else
+                        {
+                            Log.Info("RestoreService", $"[Dry-run] Conflicting: {destPath}");
+                            conflictingFiles++;
+                        }
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        Log.Info("RestoreService", $"[Dry-run] Unreadable: {destPath}");
+                        conflictingFiles++;
+                    }
+                }
+                else
+                {
+                    Log.Info("RestoreService", $"[Dry-run] New: {destPath}");
+                    newFiles++;
+                }
+            }
+
+            return new FileRestoreResult(newFiles, identicalFiles, conflictingFiles, 0, 0, false);
+        }
+
+        int restored = 0;
+        int skipped = 0;
+
+        foreach (var (file, destPath) in EnumerateRestoreFiles(stagingDirectory, manifest, oldHome, newHome))
+        {
+            if (File.Exists(destPath))
+            {
+                var resolution = await conflictResolver.ResolveAsync(file, destPath);
+
+                switch (resolution)
+                {
+                    case ConflictResolution.Identical:
+                        Log.Info("RestoreService", $"Skipped (identical): {destPath}");
+                        skipped++;
+                        break;
+                    case ConflictResolution.Skip:
+                        Log.Info("RestoreService", $"Skipped (user choice): {destPath}");
+                        skipped++;
+                        break;
+                    case ConflictResolution.Overwrite:
+                        try
+                        {
+                            File.Copy(file, destPath, overwrite: true);
+                            Log.Info("RestoreService", $"Overwritten: {destPath}");
+                            restored++;
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            Log.Info("RestoreService", $"Unauthorized access to destination: {destPath}");
+                            skipped++;
+                        }
+                        break;
+                    case ConflictResolution.Abort:
+                        return new FileRestoreResult(0, 0, 0, restored, skipped, Aborted: true);
+                }
+
+                continue;
+            }
+
+            try
+            {
+                string? destDir = Path.GetDirectoryName(destPath);
+                if (destDir is not null && !Directory.Exists(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                }
+
+                File.Copy(file, destPath, overwrite: false);
+                Log.Info("RestoreService", $"Restored: {destPath}");
+                restored++;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Log.Info("RestoreService", $"Unauthorized access to destination: {destPath}");
+                skipped++;
+            }
+        }
+
+        return new FileRestoreResult(0, 0, 0, restored, skipped, Aborted: false);
+    }
+
+    private static IEnumerable<(string file, string destPath)> EnumerateRestoreFiles(
+        string stagingDirectory,
+        Dictionary<string, string> manifest,
+        string? oldHome,
+        string newHome)
+    {
         var directories = new Queue<string>();
         directories.Enqueue(stagingDirectory);
 
@@ -211,57 +347,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
                     destPath = Path.Combine("/", relativePath);
                 }
 
-                if (File.Exists(destPath))
-                {
-                    var resolution = await conflictResolver.ResolveAsync(file, destPath);
-
-                    switch (resolution)
-                    {
-                        case ConflictResolution.Identical:
-                            Log.Info("RestoreService", $"Skipped (identical): {destPath}");
-                            skipped++;
-                            break;
-                        case ConflictResolution.Skip:
-                            Log.Info("RestoreService", $"Skipped (user choice): {destPath}");
-                            skipped++;
-                            break;
-                        case ConflictResolution.Overwrite:
-                            try
-                            {
-                                File.Copy(file, destPath, overwrite: true);
-                                Log.Info("RestoreService", $"Overwritten: {destPath}");
-                                restored++;
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                Log.Info("RestoreService", $"Unauthorized access to destination: {destPath}");
-                                skipped++;
-                            }
-                            break;
-                        case ConflictResolution.Abort:
-                            return (restored, skipped, aborted: true);
-                    }
-
-                    continue;
-                }
-
-                try
-                {
-                    string? destDir = Path.GetDirectoryName(destPath);
-                    if (destDir is not null && !Directory.Exists(destDir))
-                    {
-                        Directory.CreateDirectory(destDir);
-                    }
-
-                    File.Copy(file, destPath, overwrite: false);
-                    Log.Info("RestoreService", $"Restored: {destPath}");
-                    restored++;
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    Log.Info("RestoreService", $"Unauthorized access to destination: {destPath}");
-                    skipped++;
-                }
+                yield return (file, destPath);
             }
 
             foreach (var subDir in subDirs)
@@ -269,16 +355,15 @@ public class RestoreService(ConflictResolverService conflictResolver)
                 directories.Enqueue(subDir);
             }
         }
-
-        return (restored, skipped, aborted: false);
     }
 
-    /// <summary>
-    /// Parses manifest.txt (format: sourceDir|relativePath) into a lookup dictionary
-    /// that maps relative paths back to their original source directories.
-    /// </summary>
-    /// <param name="stagingDirectory">The extracted archive directory.</param>
-    /// <returns>Dictionary of relative path to source directory.</returns>
+    private static async Task<string> ComputeSha256Async(string filePath)
+    {
+        using var stream = File.OpenRead(filePath);
+        byte[] hash = await SHA256.HashDataAsync(stream);
+        return Convert.ToHexString(hash);
+    }
+
     private static Dictionary<string, string> LoadManifest(string stagingDirectory)
     {
         var manifest = new Dictionary<string, string>();
@@ -311,10 +396,6 @@ public class RestoreService(ConflictResolverService conflictResolver)
         return manifest;
     }
 
-    /// <summary>
-    /// Scans the manifest for /home/* prefixed source directories and returns the
-    /// most common /home/&lt;user&gt; prefix, or null if none are found.
-    /// </summary>
     private static string? DetectOldHome(Dictionary<string, string> manifest)
     {
         var homeCounts = new Dictionary<string, int>();

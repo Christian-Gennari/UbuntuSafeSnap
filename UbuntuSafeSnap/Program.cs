@@ -24,8 +24,13 @@ backupCommand.Options.Add(keepOption);
 
 var initCommand = new Command("init", "Create default targets.txt, exclusions.txt and settings.txt in the current directory");
 
+var dryRunOption = new Option<bool>("--dry-run")
+{
+    Description = "Preview what restore would do without making any changes",
+};
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
 restoreCommand.Arguments.Add(restoreFileArgument);
+restoreCommand.Options.Add(dryRunOption);
 
 var rootCommand = new RootCommand("UbuntuSafeSnap — Ubuntu backup & restore utility");
 rootCommand.Subcommands.Add(backupCommand);
@@ -78,7 +83,8 @@ initCommand.SetAction((ParseResult parseResult) =>
 restoreCommand.SetAction(async (ParseResult parseResult) =>
 {
     string? restoreFilePath = parseResult.GetValue(restoreFileArgument);
-    return await RestoreCommand.ExecuteAsync(restoreFilePath);
+    bool dryRun = parseResult.GetValue(dryRunOption);
+    return await RestoreCommand.ExecuteAsync(restoreFilePath, dryRun);
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
