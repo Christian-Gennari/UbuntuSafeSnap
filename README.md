@@ -55,7 +55,7 @@ Using curl:
 
 ```bash
 mkdir -p ~/UbuntuSafeSnap
-curl -sL -o ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
+curl -sL -o ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/Christian-Gennari/UbuntuSafeSnap/releases/latest/download/UbuntuSafeSnap
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
@@ -66,7 +66,7 @@ Using wget:
 
 ```bash
 mkdir -p ~/UbuntuSafeSnap
-wget -qO ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
+wget -qO ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/Christian-Gennari/UbuntuSafeSnap/releases/latest/download/UbuntuSafeSnap
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
@@ -74,12 +74,12 @@ Using GitHub CLI:
 
 ```bash
 mkdir -p ~/UbuntuSafeSnap
-gh release download --repo EduEdugrade/net25-kurs-5-valfri-Christian-Gennari \
+gh release download --repo Christian-Gennari/UbuntuSafeSnap \
   --pattern UbuntuSafeSnap --dir ~/UbuntuSafeSnap
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
-Or download the binary manually from [GitHub Releases](https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest).
+Or download the binary manually from [GitHub Releases](https://github.com/Christian-Gennari/UbuntuSafeSnap/releases/latest).
 
 </details>
 
