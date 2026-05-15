@@ -23,7 +23,7 @@ public class TargetResolverService
                 filePath);
         }
 
-        string homeDirectory = GetRealUserHome();
+        string homeDirectory = UserHomeHelper.GetRealUserHome();
 
         foreach (var raw in File.ReadAllLines(filePath))
         {
@@ -48,54 +48,4 @@ public class TargetResolverService
         }
     }
 
-    /// <summary>
-    /// Detects the original user's home directory when running under sudo
-    /// (via SUDO_USER + getent), falling back to Environment.SpecialFolder.UserProfile.
-    /// </summary>
-    private static string GetRealUserHome()
-    {
-        string? sudoUser = Environment.GetEnvironmentVariable("SUDO_USER");
-
-        if (!string.IsNullOrEmpty(sudoUser))
-        {
-            string? passwdEntry = GetPasswdHome(sudoUser);
-            if (passwdEntry is not null)
-            {
-                Log.Info("TargetResolverService", $"Running under sudo for user '{sudoUser}', using home: {passwdEntry}");
-                return passwdEntry;
-            }
-        }
-
-        return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-    }
-
-    /// <summary>Looks up a user's home directory from /etc/passwd via getent.</summary>
-    private static string? GetPasswdHome(string userName)
-    {
-        try
-        {
-            using var process = new System.Diagnostics.Process();
-            process.StartInfo.FileName = "getent";
-            process.StartInfo.ArgumentList.Add("passwd");
-            process.StartInfo.ArgumentList.Add(userName);
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.UseShellExecute = false;
-            process.Start();
-
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
-
-            if (process.ExitCode != 0)
-                return null;
-
-            string[] fields = output.Trim().Split(':');
-            if (fields.Length >= 6)
-                return fields[5];
-        }
-        catch
-        {
-        }
-
-        return null;
-    }
 }
