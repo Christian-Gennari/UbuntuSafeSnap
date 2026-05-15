@@ -51,17 +51,16 @@ For files larger than 1 MB, diffs are truncated to the first 50 lines. In non-in
 
 No .NET SDK required — just download and run.
 
-Using GitHub CLI:
+Using curl:
 
 ```bash
 mkdir -p ~/UbuntuSafeSnap
-gh release download --repo EduEdugrade/net25-kurs-5-valfri-Christian-Gennari \
-  --pattern UbuntuSafeSnap --dir ~/UbuntuSafeSnap
+curl -sL -o ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
 <details>
-<summary>Alternative download methods (wget / curl)</summary>
+<summary>Alternative download methods (wget / GitHub CLI / manual)</summary>
 
 Using wget:
 
@@ -71,15 +70,16 @@ wget -qO ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-ku
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
-Using curl:
+Using GitHub CLI:
 
 ```bash
 mkdir -p ~/UbuntuSafeSnap
-curl -sL -o ~/UbuntuSafeSnap/UbuntuSafeSnap https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest/download/UbuntuSafeSnap
+gh release download --repo EduEdugrade/net25-kurs-5-valfri-Christian-Gennari \
+  --pattern UbuntuSafeSnap --dir ~/UbuntuSafeSnap
 chmod +x ~/UbuntuSafeSnap/UbuntuSafeSnap
 ```
 
-> **Note:** If the repository has OAuth App access restrictions, `wget` and `curl` may return a 404 error. In that case, use the GitHub CLI method or download the binary manually from [GitHub Releases](https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest).
+Or download the binary manually from [GitHub Releases](https://github.com/EduEdugrade/net25-kurs-5-valfri-Christian-Gennari/releases/latest).
 
 </details>
 
