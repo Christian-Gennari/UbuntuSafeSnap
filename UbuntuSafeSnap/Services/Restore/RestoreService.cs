@@ -171,13 +171,11 @@ public class RestoreService(ConflictResolverService conflictResolver)
             certProcess.StartInfo.FileName = "apt-get";
             certProcess.StartInfo.Arguments = "install -y ca-certificates";
             certProcess.StartInfo.UseShellExecute = false;
-            certProcess.StartInfo.RedirectStandardOutput = true;
-            certProcess.StartInfo.RedirectStandardError = true;
             certProcess.Start();
             await certProcess.WaitForExitAsync();
 
             if (certProcess.ExitCode != 0)
-                Log.Info("RestoreService", "ca-certificates install skipped (may already be present or not needed).");
+                Log.Info("RestoreService", "ca-certificates install returned non-zero (may already be up to date).");
 
             Log.Info("RestoreService", "Running apt update to refresh package cache...");
             using var updateProcess = new Process();
@@ -443,7 +441,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
             {
                 string relativePath = Path.GetRelativePath(stagingDirectory, file);
 
-                if (relativePath == "packages.txt" || relativePath == "manifest.txt" || relativePath.StartsWith("apt-sources/"))
+                if (relativePath is "packages.txt" or "manifest.txt" or "missing-packages.txt" || relativePath.StartsWith("apt-sources/"))
                     continue;
 
                 string destPath;
