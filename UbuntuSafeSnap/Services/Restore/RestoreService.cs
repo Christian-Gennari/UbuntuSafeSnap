@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using UbuntuSafeSnap.Models;
 using UbuntuSafeSnap.Services.Shared;
 using UbuntuSafeSnap.UI;
@@ -59,11 +60,23 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
             Log.Info("RestoreService", "Archive extracted successfully.");
 
+            if (!dryRun)
+                await RestoreAptSources(stagingDirectory);
+
             var pkgResult = await ReinstallPackagesAsync(stagingDirectory, dryRun);
-            if (!dryRun && pkgResult.ExitCode != 0)
+
+            if (!dryRun)
             {
-                Log.Error("RestoreService", "Package re-installation failed. Aborting restore.");
-                return pkgResult.ExitCode;
+                string missingPkgPath = Path.Combine(stagingDirectory, "missing-packages.txt");
+                if (File.Exists(missingPkgPath))
+                {
+                    string[] failedPkgs = await File.ReadAllLinesAsync(missingPkgPath);
+                    Log.Info("RestoreService", $"Package re-installation had {failedPkgs.Length} failure(s). File restore will continue.");
+                    Log.Info("RestoreService", "The following packages need third-party repos or manual installation:");
+                    foreach (var pkg in failedPkgs)
+                        Log.Info("RestoreService", $"  - {pkg}");
+                    Log.Info("RestoreService", $"Details written to: {missingPkgPath}");
+                }
             }
 
             var fileResult = await RestoreFilesAsync(stagingDirectory, dryRun);
@@ -95,6 +108,89 @@ public class RestoreService(ConflictResolverService conflictResolver)
                 Directory.Delete(stagingDirectory, recursive: true);
                 Log.Info("RestoreService", $"Cleaned up staging directory: {stagingDirectory}");
             }
+        }
+    }
+
+    private static async Task RestoreAptSources(string stagingDirectory)
+    {
+        string aptSourcesDir = Path.Combine(stagingDirectory, "apt-sources");
+
+        if (!Directory.Exists(aptSourcesDir))
+        {
+            Log.Info("RestoreService", "No apt-sources found in archive. Skipping apt source restoration.");
+            return;
+        }
+
+        bool restored = false;
+
+        string sourcesListDir = Path.Combine(aptSourcesDir, "sources.list.d");
+        if (Directory.Exists(sourcesListDir))
+        {
+            string destDir = "/etc/apt/sources.list.d";
+            foreach (var file in Directory.GetFiles(sourcesListDir))
+            {
+                try
+                {
+                    string destPath = Path.Combine(destDir, Path.GetFileName(file));
+                    File.Copy(file, destPath, overwrite: true);
+                    Log.Info("RestoreService", $"Restored apt source: {destPath}");
+                    restored = true;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Log.Info("RestoreService", $"Cannot restore apt source {file} — permission denied (run with sudo).");
+                }
+            }
+        }
+
+        string keyringsDir = Path.Combine(aptSourcesDir, "keyrings");
+        if (Directory.Exists(keyringsDir))
+        {
+            string destDir = "/etc/apt/keyrings";
+            Directory.CreateDirectory(destDir);
+            foreach (var file in Directory.GetFiles(keyringsDir))
+            {
+                try
+                {
+                    string destPath = Path.Combine(destDir, Path.GetFileName(file));
+                    File.Copy(file, destPath, overwrite: true);
+                    Log.Info("RestoreService", $"Restored apt keyring: {destPath}");
+                    restored = true;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Log.Info("RestoreService", $"Cannot restore keyring {file} — permission denied (run with sudo).");
+                }
+            }
+        }
+
+        if (restored)
+        {
+            Log.Info("RestoreService", "Ensuring ca-certificates is available for HTTPS repos...");
+            using var certProcess = new Process();
+            certProcess.StartInfo.FileName = "apt-get";
+            certProcess.StartInfo.Arguments = "install -y ca-certificates";
+            certProcess.StartInfo.UseShellExecute = false;
+            certProcess.StartInfo.RedirectStandardOutput = true;
+            certProcess.StartInfo.RedirectStandardError = true;
+            certProcess.Start();
+            await certProcess.WaitForExitAsync();
+
+            if (certProcess.ExitCode != 0)
+                Log.Info("RestoreService", "ca-certificates install skipped (may already be present or not needed).");
+
+            Log.Info("RestoreService", "Running apt update to refresh package cache...");
+            using var updateProcess = new Process();
+            updateProcess.StartInfo.FileName = "apt";
+            updateProcess.StartInfo.Arguments = "update";
+            updateProcess.StartInfo.UseShellExecute = false;
+            updateProcess.Start();
+            updateProcess.WaitForExit();
+
+            if (updateProcess.ExitCode == 0)
+                Log.Info("RestoreService", "apt update completed successfully.");
+            else
+                Log.Info("RestoreService", $"apt update returned exit code {updateProcess.ExitCode}. Some repos may not be available.");
         }
     }
 
@@ -170,14 +266,32 @@ public class RestoreService(ConflictResolverService conflictResolver)
         }
 
         process.StartInfo.UseShellExecute = false;
+        process.StartInfo.RedirectStandardError = true;
 
         process.Start();
+        string stderr = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
 
         if (process.ExitCode != 0)
         {
-            Log.Error("RestoreService", $"apt install failed with exit code {process.ExitCode}.");
-            return new PackageRestoreResult(0, 0, process.ExitCode);
+            Log.Info("RestoreService", $"apt install completed with exit code {process.ExitCode}. Continuing with file restore...");
+
+            var failedPackages = new List<string>();
+            foreach (Match match in Regex.Matches(stderr, @"E: Unable to locate package (.+)"))
+                failedPackages.Add(match.Groups[1].Value);
+            foreach (Match match in Regex.Matches(stderr, @"E: Package '(.+)' has no installation candidate"))
+                failedPackages.Add(match.Groups[1].Value);
+
+            var distinctFailed = failedPackages.Distinct().ToList();
+
+            if (distinctFailed.Count > 0)
+            {
+                string missingPkgPath = Path.Combine(stagingDirectory, "missing-packages.txt");
+                await File.WriteAllLinesAsync(missingPkgPath, distinctFailed);
+                Log.Info("RestoreService", $"Wrote {distinctFailed.Count} missing package(s) to missing-packages.txt.");
+            }
+
+            return new PackageRestoreResult(0, 0, 0);
         }
 
         Log.Info("RestoreService", "Package re-installation complete.");
@@ -329,7 +443,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
             {
                 string relativePath = Path.GetRelativePath(stagingDirectory, file);
 
-                if (relativePath == "packages.txt" || relativePath == "manifest.txt")
+                if (relativePath == "packages.txt" || relativePath == "manifest.txt" || relativePath.StartsWith("apt-sources/"))
                     continue;
 
                 string destPath;
