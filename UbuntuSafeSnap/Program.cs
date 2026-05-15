@@ -6,6 +6,8 @@ using UbuntuSafeSnap.UI;
 const string TargetsFile = "targets.txt";
 /// <summary>Default filename for the file/directory exclusion rules configuration file.</summary>
 const string ExclusionsFile = "exclusions.txt";
+/// <summary>Default filename for the backup settings configuration file.</summary>
+const string SettingsFile = "settings.txt";
 
 var restoreFileArgument = new Argument<string?>("file")
 {
@@ -13,15 +15,14 @@ var restoreFileArgument = new Argument<string?>("file")
     Arity = new ArgumentArity(0, 1),
 };
 
-var keepOption = new Option<int>("--keep")
+var keepOption = new Option<int?>("--keep")
 {
-    Description = "Number of backups to keep (oldest are pruned)",
-    DefaultValueFactory = _ => 5,
+    Description = "Number of backups to keep (default: 5, configurable in settings.txt)",
 };
 var backupCommand = new Command("backup", "Create a backup of packages and files");
 backupCommand.Options.Add(keepOption);
 
-var initCommand = new Command("init", "Create default targets.txt and exclusions.txt in the current directory");
+var initCommand = new Command("init", "Create default targets.txt, exclusions.txt and settings.txt in the current directory");
 
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
 restoreCommand.Arguments.Add(restoreFileArgument);
@@ -58,7 +59,10 @@ backupCommand.SetAction(async (ParseResult parseResult) =>
         return 1;
     }
 
-    int keep = parseResult.GetValue(keepOption);
+    string settingsPath = Path.Combine(Directory.GetCurrentDirectory(), SettingsFile);
+    int? keepOptionValue = parseResult.GetValue(keepOption);
+    int keep = keepOptionValue ?? ParseKeepFromSettings(settingsPath);
+    Log.Info("BackupCommand", $"Using keep = {keep}");
     return await BackupCommand.ExecuteAsync(targetsPath, exclusionsPath, keep);
 });
 
@@ -66,8 +70,9 @@ initCommand.SetAction((ParseResult parseResult) =>
 {
     string targetsPath = Path.Combine(Directory.GetCurrentDirectory(), TargetsFile);
     string exclusionsPath = Path.Combine(Directory.GetCurrentDirectory(), ExclusionsFile);
+    string settingsPath = Path.Combine(Directory.GetCurrentDirectory(), SettingsFile);
 
-    return InitCommand.Execute(targetsPath, exclusionsPath);
+    return InitCommand.Execute(targetsPath, exclusionsPath, settingsPath);
 });
 
 restoreCommand.SetAction(async (ParseResult parseResult) =>
@@ -77,3 +82,33 @@ restoreCommand.SetAction(async (ParseResult parseResult) =>
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());
+
+/// <summary>Parses the keep value from settings.txt, handling # comments and blank lines. Returns default 5 if file is missing or no valid keep entry found.</summary>
+static int ParseKeepFromSettings(string settingsPath)
+{
+    if (!File.Exists(settingsPath))
+        return 5;
+
+    foreach (var rawLine in File.ReadAllLines(settingsPath))
+    {
+        var line = rawLine.Trim();
+
+        if (string.IsNullOrEmpty(line) || line.StartsWith('#'))
+            continue;
+
+        int eqIndex = line.IndexOf('=');
+        if (eqIndex < 0) continue;
+
+        string key = line[..eqIndex].Trim();
+
+        if (!key.Equals("keep", StringComparison.OrdinalIgnoreCase))
+            continue;
+
+        string valuePart = line[(eqIndex + 1)..].Trim();
+
+        if (int.TryParse(valuePart, out int keep) && keep > 0)
+            return keep;
+    }
+
+    return 5;
+}

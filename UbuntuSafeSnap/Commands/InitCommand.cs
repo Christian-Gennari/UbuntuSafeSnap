@@ -41,10 +41,19 @@ __pycache__/
 .git/
 """;
 
-    public static int Execute(string targetsPath, string exclusionsPath)
+    private const string DefaultSettings = """
+# Backup settings
+# Lines starting with # are comments and will be ignored.
+
+# Number of backups to keep (oldest are pruned automatically)
+keep = 5
+""";
+
+    public static int Execute(string targetsPath, string exclusionsPath, string settingsPath)
     {
         bool targetsCreated = false;
         bool exclusionsCreated = false;
+        bool settingsCreated = false;
 
         if (!File.Exists(targetsPath))
         {
@@ -68,7 +77,18 @@ __pycache__/
             Log.Info("InitCommand", "exclusions.txt already exists — skipped.");
         }
 
-        if (targetsCreated || exclusionsCreated)
+        if (!File.Exists(settingsPath))
+        {
+            File.WriteAllText(settingsPath, DefaultSettings);
+            Log.Info("InitCommand", $"Created {settingsPath} with default configuration.");
+            settingsCreated = true;
+        }
+        else
+        {
+            Log.Info("InitCommand", "settings.txt already exists — skipped.");
+        }
+
+        if (targetsCreated || exclusionsCreated || settingsCreated)
         {
             Console.WriteLine();
             Log.Info("InitCommand", "Review the created file(s) and adjust to your needs, then run:");
