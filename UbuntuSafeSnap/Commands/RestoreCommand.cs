@@ -6,7 +6,7 @@ namespace UbuntuSafeSnap.Commands;
 
 public static class RestoreCommand
 {
-    public static async Task<int> ExecuteAsync(string? restoreFilePath)
+    public static async Task<int> ExecuteAsync(string? restoreFilePath, bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(restoreFilePath))
         {
@@ -50,6 +50,6 @@ public static class RestoreCommand
             .BuildServiceProvider();
 
         var restoreService = services.GetRequiredService<RestoreService>();
-        return await restoreService.RestoreAsync(restoreFilePath);
+        return await restoreService.RestoreAsync(restoreFilePath, dryRun);
     }
 }
