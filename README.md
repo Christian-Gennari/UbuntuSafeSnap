@@ -24,6 +24,8 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 - Restores files to their original locations using `manifest.txt`
 - Skips identical files automatically (SHA256 comparison)
 - Presents an interactive backup selection menu if no file is specified
+- Automatically remaps home directory paths when restoring on a different user (e.g. backup from `alice` → restore to `bob`)
+- Dry-run mode (`--dry-run`) previews what would be restored without making changes; does not require `sudo`
 
 <details>
 <summary>Conflict resolution details</summary>
@@ -99,7 +101,7 @@ bash install.sh /custom/path   # installs to a custom directory
 ```bash
 cd ~/UbuntuSafeSnap
 ./UbuntuSafeSnap init
-# Edit targets.txt and exclusions.txt to your needs
+# Edit targets.txt, exclusions.txt, and settings.txt to your needs
 ```
 
 ### 2. Create a backup
@@ -127,6 +129,12 @@ Or specify a file directly:
 
 ```bash
 sudo ./UbuntuSafeSnap restore backups/ubuntusafesnap-20260509-123456.zip
+```
+
+Preview what would be restored without making changes (no `sudo` needed):
+
+```bash
+./UbuntuSafeSnap restore --dry-run backups/ubuntusafesnap-20260509-123456.zip
 ```
 
 ### 4. Scheduled backups
@@ -208,59 +216,21 @@ __pycache__/
 
 </details>
 
+### Settings (`settings.txt`)
+
+Created by `init` alongside the other config files. Controls default behavior:
+
+```
+# Default settings for UbuntuSafeSnap
+keep = 5
+```
+
+- **`keep`** — Number of backups to retain (default: 5). Old backups beyond this count are pruned during `backup`.
+- Priority: `--keep` CLI flag > `settings.txt` `keep` value > default (5).
+
 ### Manifest (`manifest.txt`)
 
 Auto-generated during backup. Records the mapping `<source_directory>|<relative_path>` for each file, enabling restore to place files back in their original locations. Do not edit or delete this file from the archive.
-
-<details>
-<summary>Architecture</summary>
-
-The application uses a service-oriented architecture with .NET Dependency Injection, organized into the following namespaces:
-
-**`Commands/`** — CLI command handlers (System.CommandLine)
-
-| Command | Description |
-|---------|-------------|
-| `BackupCommand` | Orchestrates the backup pipeline: resolve targets → extract packages → collect files → create archive → prune old backups |
-| `RestoreCommand` | Handles backup selection (interactive or via argument), then delegates to `RestoreService` |
-| `InitCommand` | Scaffolds `targets.txt` and `exclusions.txt` with default values |
-
-**`Services/Backup/`** — Backup pipeline services
-
-| Service | Description |
-|---------|-------------|
-| `PackageService` | Runs `apt-mark showmanual` and writes `packages.txt` |
-| `CollectorService` | Recursively collects files, applies exclusions, skips symlinks/special files, writes `manifest.txt` |
-| `ArchiveService` | Creates `.zip` archives, cleans up staging, and prunes old backups beyond the `--keep` limit |
-
-**`Services/Shared/`** — Shared utilities
-
-| Service | Description |
-|---------|-------------|
-| `TargetResolverService` | Resolves and expands paths from `targets.txt`; blocks home directory as target; resolves `~` to real user home under `sudo` |
-| `ExclusionService` | Evaluates files against extension, filename, and directory rules; `ShouldExclude` for files, `ShouldExcludeDirectory` for directory trees |
-
-**`Services/Restore/`** — Restore pipeline services
-
-| Service | Description |
-|---------|-------------|
-| `RestoreService` | Extracts archives, reinstalls packages, restores files using `manifest.txt` paths |
-| `ConflictResolverService` | Compares SHA256 hashes of conflicting files; provides interactive Spectre.Console menu with inline DiffPlex diffs; handles large files (>1MB) with partial diffs; auto-aborts in non-interactive terminals |
-
-**`UI/`** — Console interface utilities
-
-| Class | Description |
-|-------|-------------|
-| `Log` | Structured console output using Spectre.Console markup |
-| `ConsolePrompt` | Interactive selection prompts, confirmations, and terminal capability detection |
-
-**`Models/`** — Data models
-
-| Model | Description |
-|-------|-------------|
-| `ConflictResolution` | Enum: `Overwrite`, `Skip`, `Identical`, `Abort` |
-
-</details>
 
 ## Development
 
