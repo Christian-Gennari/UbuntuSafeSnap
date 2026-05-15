@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using UbuntuSafeSnap.Models;
+using UbuntuSafeSnap.Services.Shared;
 using UbuntuSafeSnap.UI;
 
 namespace UbuntuSafeSnap.Services.Restore;
@@ -157,6 +158,12 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         var manifest = LoadManifest(stagingDirectory);
 
+        string? oldHome = DetectOldHome(manifest);
+        string newHome = UserHomeHelper.GetRealUserHome();
+
+        if (oldHome != null && oldHome != newHome)
+            Log.Info("RestoreService", $"Remapping home directory: {oldHome} → {newHome}");
+
         var directories = new Queue<string>();
         directories.Enqueue(stagingDirectory);
 
@@ -193,6 +200,10 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
                 if (manifest.TryGetValue(relativePath, out string? sourceDir))
                 {
+                    if (oldHome != null && sourceDir.StartsWith(oldHome) &&
+                        (sourceDir.Length == oldHome.Length || sourceDir[oldHome.Length] == '/'))
+                        sourceDir = newHome + sourceDir[oldHome.Length..];
+
                     destPath = Path.Combine(sourceDir, relativePath);
                 }
                 else
@@ -298,5 +309,31 @@ public class RestoreService(ConflictResolverService conflictResolver)
 
         Log.Info("RestoreService", $"Loaded manifest with {manifest.Count} entries.");
         return manifest;
+    }
+
+    /// <summary>
+    /// Scans the manifest for /home/* prefixed source directories and returns the
+    /// most common /home/&lt;user&gt; prefix, or null if none are found.
+    /// </summary>
+    private static string? DetectOldHome(Dictionary<string, string> manifest)
+    {
+        var homeCounts = new Dictionary<string, int>();
+
+        foreach (var sourceDir in manifest.Values)
+        {
+            if (!sourceDir.StartsWith("/home/"))
+                continue;
+
+            int endIndex = sourceDir.IndexOf('/', "/home/".Length);
+            string homePrefix = endIndex >= 0 ? sourceDir[..endIndex] : sourceDir;
+
+            homeCounts.TryGetValue(homePrefix, out int count);
+            homeCounts[homePrefix] = count + 1;
+        }
+
+        if (homeCounts.Count == 0)
+            return null;
+
+        return homeCounts.MaxBy(kvp => kvp.Value).Key;
     }
 }
