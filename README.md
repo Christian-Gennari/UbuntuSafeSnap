@@ -14,13 +14,15 @@ A .NET 10 self-contained executable for backing up and restoring Ubuntu system c
 - Skips symlinks, broken symlinks, sockets, and pipes gracefully
 - Records source directories in `manifest.txt` for accurate restore paths
 - Bundles everything into a timestamped `.zip` archive in `./backups/`
+- Automatically includes `/etc/apt/sources.list.d/` and `/etc/apt/keyrings/` so third-party repos (Docker, Tailscale, Azure CLI, etc.) can be restored on a fresh system
 - Prunes old backups beyond the `--keep` count (default: 5)
 - Warns if run as root without `sudo` (home directory targets would resolve to `/root`)
 
 ### Restore
 
 - Requires `sudo` — verifies root privileges before proceeding
-- Reinstalls packages from `packages.txt` via `apt install -y`
+- Restores backed-up apt sources and keyrings, runs `apt update`, then reinstalls packages from `packages.txt` via `apt install -y`
+- Package install failures are **non-fatal** — failed packages are logged to `missing-packages.txt` and file restoration continues
 - Restores files to their original locations using `manifest.txt`
 - Skips identical files automatically (SHA256 comparison)
 - Presents an interactive backup selection menu if no file is specified
@@ -231,6 +233,19 @@ keep = 5
 ### Manifest (`manifest.txt`)
 
 Auto-generated during backup. Records the mapping `<source_directory>|<relative_path>` for each file, enabling restore to place files back in their original locations. Do not edit or delete this file from the archive.
+
+### Auto-included files
+
+Every backup archive automatically contains these items alongside user-defined targets:
+
+| File | Purpose |
+|------|---------|
+| `packages.txt` | Output of `apt-mark showmanual` for package reinstallation |
+| `manifest.txt` | Maps every file to its original source path |
+| `apt-sources/sources.list.d/` | Third-party apt repository definitions (e.g. Docker, Tailscale) |
+| `apt-sources/keyrings/` | GPG keys for authenticating third-party repos |
+
+These are not user-configurable — they are always present in every archive.
 
 ## Development
 
