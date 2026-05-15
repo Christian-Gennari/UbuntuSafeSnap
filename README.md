@@ -143,6 +143,8 @@ Add the following line for a weekly backup every Sunday at 02:00, keeping the 5 
 0 2 * * 0 ~/UbuntuSafeSnap/UbuntuSafeSnap backup --keep 5 >> ~/UbuntuSafeSnap/cron.log 2>&1
 ```
 
+> **Cloud backup:** See [CLOUD_BACKUP.md](CLOUD_BACKUP.md) for syncing backups to cloud storage.
+
 ## Configuration
 
 ### Targets (`targets.txt`)
