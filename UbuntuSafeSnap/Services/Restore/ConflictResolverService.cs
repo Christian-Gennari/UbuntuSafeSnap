@@ -17,6 +17,12 @@ public class ConflictResolverService
     private const long MaxDiffFileSize = 1 * 1024 * 1024;
 
     /// <summary>
+    /// When set to true, conflicting files are automatically overwritten without prompting.
+    /// Useful for automated/scripted restore workflows (e.g. --yes flag).
+    /// </summary>
+    public bool AutoYes { get; set; }
+
+    /// <summary>
     /// Entry point for conflict resolution. Compares hashes; if identical returns Identical immediately.
     /// Otherwise enters the interactive prompt loop.
     /// </summary>
@@ -45,10 +51,15 @@ public class ConflictResolverService
             return ConflictResolution.Identical;
         }
 
+        if (AutoYes)
+        {
+            return ConflictResolution.Overwrite;
+        }
+
         if (!ConsolePrompt.IsInteractive)
         {
             Log.Error("ConflictResolverService", $"Conflict requires user input: {destFile}");
-            Log.Error("ConflictResolverService", "Re-run in an interactive terminal to resolve.");
+            Log.Error("ConflictResolverService", "Re-run with --yes or in an interactive terminal to resolve.");
             return ConflictResolution.Abort;
         }
 

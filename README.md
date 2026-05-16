@@ -39,7 +39,15 @@ When a file already exists on the system and differs from the backup, an interac
 - **View Diff** — Show an inline diff comparing the two versions (powered by DiffPlex), then re-prompt
 - **Abort Restore** — Stop the restore process immediately
 
-For files larger than 1 MB, diffs are truncated to the first 50 lines. In non-interactive terminals, conflicts that require user input cause an automatic abort with a message to re-run interactively.
+For files larger than 1 MB, diffs are truncated to the first 50 lines.
+
+In non-interactive terminals (e.g. scripts, cron), conflicting files cause an automatic abort with a message to re-run interactively. To skip the interactive prompt and auto-overwrite all conflicting files, pass `--yes`:
+
+```bash
+sudo ./UbuntuSafeSnap restore --yes backups/backup.zip
+```
+
+> **⚠ `--yes` should be used sparingly** — always prefer an interactive restore where you can review each conflict.
 
 </details>
 
@@ -139,6 +147,14 @@ Preview what would be restored without making changes (no `sudo` needed):
 ./UbuntuSafeSnap restore --dry-run backups/ubuntusafesnap-20260509-123456.zip
 ```
 
+Automatically overwrite all conflicting files without prompting (non-interactive):
+
+```bash
+sudo ./UbuntuSafeSnap restore --yes backups/ubuntusafesnap-20260509-123456.zip
+```
+
+> **⚠ Use `--yes` with caution.** It skips the interactive conflict resolver and overwrites any file that differs from the backup. Always run `--dry-run` first to preview what would change, and prefer running without `--yes` in an interactive terminal so you can review conflicts manually.
+
 ### 4. Scheduled backups
 
 To run automatic weekly backups, add a cron entry:
@@ -154,6 +170,8 @@ Add the following line for a weekly backup every Sunday at 02:00, keeping the 5 
 ```
 
 > **Cloud backup:** See [CLOUD_BACKUP.md](CLOUD_BACKUP.md) for syncing backups to cloud storage.
+>
+> **⚠ Restoring is destructive.** Always review what will be restored with `--dry-run` first, and prefer running `restore` in an interactive terminal so you can handle file conflicts manually rather than using `--yes`.
 
 ## Configuration
 

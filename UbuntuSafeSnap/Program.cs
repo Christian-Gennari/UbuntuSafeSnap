@@ -28,9 +28,14 @@ var dryRunOption = new Option<bool>("--dry-run")
 {
     Description = "Preview what restore would do without making any changes",
 };
+var yesOption = new Option<bool>("--yes")
+{
+    Description = "Automatically overwrite conflicting files without prompting (use with care)",
+};
 var restoreCommand = new Command("restore", "Restore system from a backup archive");
 restoreCommand.Arguments.Add(restoreFileArgument);
 restoreCommand.Options.Add(dryRunOption);
+restoreCommand.Options.Add(yesOption);
 
 var rootCommand = new RootCommand("UbuntuSafeSnap — Ubuntu backup & restore utility");
 rootCommand.Subcommands.Add(backupCommand);
@@ -84,7 +89,8 @@ restoreCommand.SetAction(async (ParseResult parseResult) =>
 {
     string? restoreFilePath = parseResult.GetValue(restoreFileArgument);
     bool dryRun = parseResult.GetValue(dryRunOption);
-    return await RestoreCommand.ExecuteAsync(restoreFilePath, dryRun);
+    bool autoYes = parseResult.GetValue(yesOption);
+    return await RestoreCommand.ExecuteAsync(restoreFilePath, dryRun, autoYes);
 });
 
 return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration());

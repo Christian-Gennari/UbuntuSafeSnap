@@ -11,7 +11,7 @@ namespace UbuntuSafeSnap.Services.Restore;
 public class RestoreService(ConflictResolverService conflictResolver)
 {
 
-    public async Task<int> RestoreAsync(string archivePath, bool dryRun = false)
+    public async Task<int> RestoreAsync(string archivePath, bool dryRun = false, bool autoYes = false)
     {
         ArgumentNullException.ThrowIfNull(archivePath);
 
@@ -79,6 +79,7 @@ public class RestoreService(ConflictResolverService conflictResolver)
                 }
             }
 
+            conflictResolver.AutoYes = autoYes;
             var fileResult = await RestoreFilesAsync(stagingDirectory, dryRun);
 
             if (!dryRun && fileResult.Aborted)
