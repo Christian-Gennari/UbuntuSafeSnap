@@ -4,6 +4,8 @@
 
 A .NET 10 self-contained executable for backing up and restoring Ubuntu system configuration and files. Back up your packages and dotfiles on one machine, fresh-install Ubuntu, and restore everything as it was.
 
+<img width="1672" height="941" alt="header-image" src="https://github.com/user-attachments/assets/6f01a101-71a9-415b-8fde-1aea203b9399" />
+
 ## Features
 
 ### Backup
